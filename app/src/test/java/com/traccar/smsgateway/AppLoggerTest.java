@@ -1,8 +1,12 @@
 package com.traccar.smsgateway;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -10,9 +14,12 @@ import static org.junit.Assert.assertTrue;
 
 public class AppLoggerTest {
 
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
     @Before
     public void setUp() {
-        AppLogger.clearLogs();
+        AppLogger.resetLogFile();
     }
 
     @Test
@@ -65,5 +72,23 @@ public class AppLoggerTest {
         assertEquals(max, logs.size());
         assertEquals("Message 50", logs.get(0).getMessage());
         assertEquals("Message " + (max + 49), logs.get(max - 1).getMessage());
+    }
+
+    @Test
+    public void testFilePersistenceAndReload() throws IOException {
+        File tempFile = tempFolder.newFile("test_logs.txt");
+        AppLogger.setLogFile(tempFile);
+        AppLogger.clearLogs();
+
+        AppLogger.i("PersistTag", "First persistent log");
+        AppLogger.w("PersistTag", "Second persistent log");
+
+        // Simulate app restart by clearing memory list and re-assigning log file
+        AppLogger.setLogFile(tempFile);
+
+        List<AppLogger.LogEntry> reloadedLogs = AppLogger.getLogs();
+        assertEquals(2, reloadedLogs.size());
+        assertEquals("First persistent log", reloadedLogs.get(0).getMessage());
+        assertEquals("Second persistent log", reloadedLogs.get(1).getMessage());
     }
 }

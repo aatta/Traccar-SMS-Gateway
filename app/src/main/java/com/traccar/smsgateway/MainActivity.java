@@ -1,6 +1,7 @@
 package com.traccar.smsgateway;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -33,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textEmptyDevices;
     private Button buttonSave;
     private Button buttonTest;
+    private Button buttonViewSmsList;
     private Button buttonViewLogs;
     private TextView textStatus;
     private TextView textInfo;
@@ -61,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         textEmptyDevices = findViewById(R.id.textEmptyDevices);
         buttonSave = findViewById(R.id.buttonSave);
         buttonTest = findViewById(R.id.buttonTest);
+        buttonViewSmsList = findViewById(R.id.buttonViewSmsList);
         buttonViewLogs = findViewById(R.id.buttonViewLogs);
         textStatus = findViewById(R.id.textStatus);
         textInfo = findViewById(R.id.textInfo);
@@ -178,42 +181,9 @@ public class MainActivity extends AppCompatActivity {
     private void setupListeners() {
         buttonSave.setOnClickListener(v -> saveConfiguration());
         buttonTest.setOnClickListener(v -> testConnection());
-        buttonViewLogs.setOnClickListener(v -> showLogsDialog());
+        buttonViewSmsList.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SmsListActivity.class)));
+        buttonViewLogs.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, LogViewerActivity.class)));
         buttonAddDevice.setOnClickListener(v -> showAddEditDeviceDialog(null));
-    }
-
-    private void showLogsDialog() {
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_logs, null);
-        TextView textLogsContent = dialogView.findViewById(R.id.textLogsContent);
-        Button buttonClear = dialogView.findViewById(R.id.buttonClearLogs);
-        Button buttonRefresh = dialogView.findViewById(R.id.buttonRefreshLogs);
-        Button buttonClose = dialogView.findViewById(R.id.buttonCloseLogs);
-
-        Runnable refreshLogsAction = () -> {
-            String logs = AppLogger.getFormattedLogs();
-            if (logs.isEmpty()) {
-                textLogsContent.setText("No log entries recorded yet.");
-            } else {
-                textLogsContent.setText(logs);
-            }
-        };
-
-        refreshLogsAction.run();
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(dialogView)
-                .create();
-
-        buttonClear.setOnClickListener(v -> {
-            AppLogger.clearLogs();
-            refreshLogsAction.run();
-            Toast.makeText(MainActivity.this, "Logs cleared", Toast.LENGTH_SHORT).show();
-        });
-
-        buttonRefresh.setOnClickListener(v -> refreshLogsAction.run());
-        buttonClose.setOnClickListener(v -> dialog.dismiss());
-
-        dialog.show();
     }
 
     private void saveConfiguration() {

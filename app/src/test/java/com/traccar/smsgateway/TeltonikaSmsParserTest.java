@@ -30,6 +30,8 @@ public class TeltonikaSmsParserTest {
         assertEquals(24.961905, lastElem.getLatitudeDeg(), 0.0001);
         assertEquals(67.067187, lastElem.getLongitudeDeg(), 0.0001);
         assertEquals(0, lastElem.getSpeedKmh());
+        // Verify element 23 timestamp matches base timestamp (header timestamp)
+        assertEquals(result.getBaseTimestampMillis(), lastElem.getTimestampMillis());
     }
 
     @Test

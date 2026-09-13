@@ -156,7 +156,9 @@ public class TeltonikaSmsParser {
 
         for (int i = 0; i < elementCount; i++) {
             boolean valid = stream.readBits(1) == 1;
-            long elementTimeMillis = baseTimestampMillis + (i * 3600000L);
+            // The timestamp in the SMS header represents the time of the latest (last) element.
+            // Earlier elements are offset backwards by 1 hour each.
+            long elementTimeMillis = baseTimestampMillis - ((elementCount - 1 - i) * 3600000L);
 
             if (!valid) {
                 elements.add(new GpsElement(i, false, false, 0, 0, 0.0, 0.0, 0, elementTimeMillis));

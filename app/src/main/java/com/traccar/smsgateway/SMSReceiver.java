@@ -31,7 +31,9 @@ public class SMSReceiver extends BroadcastReceiver {
                     
                     if (PreferenceManager.isBinarySmsEnabled(context, sender)) {
                         byte[] userData = message.getUserData();
+                        String hexData = bytesToHex(userData);
                         Log.d(TAG, "SMS Received from: " + sender + " (Binary Mode)");
+                        Log.d(TAG, "SMS Binary Content (Hex): " + hexData);
                         forwardToTraccar(context, sender, userData);
                     } else {
                         String body = message.getMessageBody();
@@ -42,6 +44,18 @@ public class SMSReceiver extends BroadcastReceiver {
                 }
             }
         }
+    }
+
+    /**
+     * Convert byte array to Hex string for logging
+     */
+    private String bytesToHex(byte[] bytes) {
+        if (bytes == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X ", b));
+        }
+        return sb.toString().trim();
     }
 
     /**

@@ -20,6 +20,7 @@ public class SMSReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        AppLogger.init(context);
         if (intent.getAction().equals(SMS_RECEIVED_ACTION)) {
             Object[] pdus = (Object[]) intent.getExtras().get(PDU_EXTRA_NAME);
             

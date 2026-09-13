@@ -22,6 +22,8 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
+
     private EditText editTraccarHost;
     private EditText editTraccarPort;
     private Switch switchEnabled;
@@ -31,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textEmptyDevices;
     private Button buttonSave;
     private Button buttonTest;
+    private Button buttonViewLogs;
     private TextView textStatus;
     private TextView textInfo;
 
@@ -57,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         textEmptyDevices = findViewById(R.id.textEmptyDevices);
         buttonSave = findViewById(R.id.buttonSave);
         buttonTest = findViewById(R.id.buttonTest);
+        buttonViewLogs = findViewById(R.id.buttonViewLogs);
         textStatus = findViewById(R.id.textStatus);
         textInfo = findViewById(R.id.textInfo);
     }
@@ -144,7 +148,9 @@ public class MainActivity extends AppCompatActivity {
                 PreferenceManager.setBinarySmsEnabled(MainActivity.this, phone, binary);
 
                 refreshDeviceMappingsList();
-                updateStatus("✓ Device mapped: " + phone + " -> " + deviceId + (binary ? " (Binary)" : ""));
+                String msg = "Device mapped: " + phone + " -> " + deviceId + (binary ? " (Binary)" : "");
+                AppLogger.i(TAG, msg);
+                updateStatus("✓ " + msg);
                 Toast.makeText(MainActivity.this, "Device mapping saved", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
             });
@@ -160,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("Delete", (dialog, which) -> {
                     PreferenceManager.removeDeviceMapping(MainActivity.this, mapping.getPhoneNumber());
                     refreshDeviceMappingsList();
+                    AppLogger.i(TAG, "Removed device mapping for " + mapping.getPhoneNumber());
                     updateStatus("Removed device mapping for " + mapping.getPhoneNumber());
                     Toast.makeText(MainActivity.this, "Device mapping removed", Toast.LENGTH_SHORT).show();
                 })
@@ -170,7 +177,42 @@ public class MainActivity extends AppCompatActivity {
     private void setupListeners() {
         buttonSave.setOnClickListener(v -> saveConfiguration());
         buttonTest.setOnClickListener(v -> testConnection());
+        buttonViewLogs.setOnClickListener(v -> showLogsDialog());
         buttonAddDevice.setOnClickListener(v -> showAddEditDeviceDialog(null));
+    }
+
+    private void showLogsDialog() {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_logs, null);
+        TextView textLogsContent = dialogView.findViewById(R.id.textLogsContent);
+        Button buttonClear = dialogView.findViewById(R.id.buttonClearLogs);
+        Button buttonRefresh = dialogView.findViewById(R.id.buttonRefreshLogs);
+        Button buttonClose = dialogView.findViewById(R.id.buttonCloseLogs);
+
+        Runnable refreshLogsAction = () -> {
+            String logs = AppLogger.getFormattedLogs();
+            if (logs.isEmpty()) {
+                textLogsContent.setText("No log entries recorded yet.");
+            } else {
+                textLogsContent.setText(logs);
+            }
+        };
+
+        refreshLogsAction.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+
+        buttonClear.setOnClickListener(v -> {
+            AppLogger.clearLogs();
+            refreshLogsAction.run();
+            Toast.makeText(MainActivity.this, "Logs cleared", Toast.LENGTH_SHORT).show();
+        });
+
+        buttonRefresh.setOnClickListener(v -> refreshLogsAction.run());
+        buttonClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     private void saveConfiguration() {
@@ -192,9 +234,11 @@ public class MainActivity extends AppCompatActivity {
             PreferenceManager.setEnabled(this, enabled);
             PreferenceManager.setAutoStart(this, autoStart);
 
+            AppLogger.i(TAG, "Configuration saved: host=" + host + ", port=" + port + ", enabled=" + enabled + ", autoStart=" + autoStart);
             updateStatus("✓ Configuration saved successfully!");
             Toast.makeText(this, "Configuration saved", Toast.LENGTH_SHORT).show();
         } catch (NumberFormatException e) {
+            AppLogger.e(TAG, "Invalid port number entered: " + editTraccarPort.getText().toString());
             Toast.makeText(this, "Invalid port number", Toast.LENGTH_SHORT).show();
         }
     }
@@ -210,6 +254,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             int port = Integer.parseInt(portStr);
+            AppLogger.i(TAG, "Testing connection to " + host + ":" + port);
             updateStatus("Testing connection...");
 
             new Thread(() -> {
@@ -218,6 +263,7 @@ public class MainActivity extends AppCompatActivity {
                     client.connect(host, port);
                     
                     if (client.isConnected()) {
+                        AppLogger.i(TAG, "Connection test successful for " + host + ":" + port);
                         updateStatus("✓ Connection successful! Ready to receive SMS.");
                         runOnUiThread(() -> 
                             Toast.makeText(MainActivity.this, "Connected to Traccar server", 
@@ -225,9 +271,11 @@ public class MainActivity extends AppCompatActivity {
                         );
                         client.disconnect();
                     } else {
+                        AppLogger.e(TAG, "Connection test failed for " + host + ":" + port);
                         updateStatus("✗ Connection failed");
                     }
                 } catch (Exception e) {
+                    AppLogger.e(TAG, "Connection test error: " + e.getMessage(), e);
                     updateStatus("✗ Error: " + e.getMessage());
                     runOnUiThread(() -> 
                         Toast.makeText(MainActivity.this, "Connection error: " + e.getMessage(), 

@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText editTraccarPort;
     private Switch switchEnabled;
     private Switch switchAutoStart;
+    private Switch switchBinarySms;
     private Button buttonSave;
     private Button buttonTest;
     private TextView textStatus;
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
         editTraccarPort = findViewById(R.id.editTraccarPort);
         switchEnabled = findViewById(R.id.switchEnabled);
         switchAutoStart = findViewById(R.id.switchAutoStart);
+        switchBinarySms = findViewById(R.id.switchBinarySms);
         buttonSave = findViewById(R.id.buttonSave);
         buttonTest = findViewById(R.id.buttonTest);
         textStatus = findViewById(R.id.textStatus);
@@ -54,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         editTraccarPort.setText(String.valueOf(PreferenceManager.getTraccarPort(this)));
         switchEnabled.setChecked(PreferenceManager.isEnabled(this));
         switchAutoStart.setChecked(PreferenceManager.isAutoStartEnabled(this));
+        switchBinarySms.setChecked(PreferenceManager.isBinarySmsEnabled(this));
     }
 
     private void setupListeners() {
@@ -67,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
             String portStr = editTraccarPort.getText().toString().trim();
             boolean enabled = switchEnabled.isChecked();
             boolean autoStart = switchAutoStart.isChecked();
+            boolean binarySms = switchBinarySms.isChecked();
 
             if (host.isEmpty() || portStr.isEmpty()) {
                 Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
@@ -79,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
             PreferenceManager.setTraccarPort(this, port);
             PreferenceManager.setEnabled(this, enabled);
             PreferenceManager.setAutoStart(this, autoStart);
+            PreferenceManager.setBinarySmsEnabled(this, binarySms);
 
             updateStatus("✓ Configuration saved successfully!");
             Toast.makeText(this, "Configuration saved", Toast.LENGTH_SHORT).show();

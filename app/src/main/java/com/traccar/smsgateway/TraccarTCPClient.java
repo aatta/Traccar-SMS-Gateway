@@ -50,22 +50,27 @@ public class TraccarTCPClient {
      * Send raw message to Traccar server
      */
     public void sendMessage(String host, int port, String message) throws Exception {
+        // Add newline if not present (Traccar expects line-terminated messages for text protocols)
+        if (!message.endsWith("\n")) {
+            message = message + "\n";
+        }
+        sendMessage(host, port, message.getBytes(StandardCharsets.UTF_8));
+        Log.d(TAG, "Sent to Traccar: " + message.trim());
+    }
+
+    /**
+     * Send raw bytes to Traccar server
+     */
+    public void sendMessage(String host, int port, byte[] data) throws Exception {
         // Ensure we're connected
         if (!isConnected || socket == null || !socket.isConnected()) {
             connect(host, port);
         }
 
         try {
-            // Add newline if not present (Traccar expects line-terminated messages)
-            if (!message.endsWith("\n")) {
-                message = message + "\n";
-            }
-
-            byte[] data = message.getBytes(StandardCharsets.UTF_8);
             outputStream.write(data);
             outputStream.flush();
-            
-            Log.d(TAG, "Sent to Traccar: " + message.trim());
+            Log.d(TAG, "Sent raw bytes to Traccar: " + data.length + " bytes");
         } catch (Exception e) {
             isConnected = false;
             disconnect();

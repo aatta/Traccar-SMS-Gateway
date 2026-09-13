@@ -12,6 +12,7 @@ public class PreferenceManager {
     private static final String KEY_ENABLED = "gateway_enabled";
     private static final String KEY_AUTO_START = "auto_start";
     private static final String KEY_LOG_ENABLED = "log_enabled";
+    private static final String KEY_BINARY_SMS = "binary_sms";
 
     private static SharedPreferences getPreferences(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -122,6 +123,22 @@ public class PreferenceManager {
      */
     public static boolean isLogEnabled(Context context) {
         return getPreferences(context).getBoolean(KEY_LOG_ENABLED, true);
+    }
+
+    /**
+     * Enable/disable binary SMS mode
+     */
+    public static void setBinarySmsEnabled(Context context, boolean enabled) {
+        SharedPreferences.Editor editor = getPreferences(context).edit();
+        editor.putBoolean(KEY_BINARY_SMS, enabled);
+        editor.apply();
+    }
+
+    /**
+     * Check if binary SMS mode is enabled
+     */
+    public static boolean isBinarySmsEnabled(Context context) {
+        return getPreferences(context).getBoolean(KEY_BINARY_SMS, false);
     }
 
     /**

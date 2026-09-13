@@ -28,13 +28,17 @@ public class SMSReceiver extends BroadcastReceiver {
                 for (Object pdu : pdus) {
                     SmsMessage message = SmsMessage.createFromPdu((byte[]) pdu, "3gpp");
                     String sender = message.getOriginatingAddress();
-                    String body = message.getMessageBody();
                     
-                    Log.d(TAG, "SMS Received from: " + sender);
-                    Log.d(TAG, "SMS Body: " + body);
-                    
-                    // Forward SMS directly to Traccar
-                    forwardToTraccar(context, sender, body);
+                    if (PreferenceManager.isBinarySmsEnabled(context)) {
+                        byte[] userData = message.getUserData();
+                        Log.d(TAG, "SMS Received from: " + sender + " (Binary Mode)");
+                        forwardToTraccar(context, sender, userData);
+                    } else {
+                        String body = message.getMessageBody();
+                        Log.d(TAG, "SMS Received from: " + sender);
+                        Log.d(TAG, "SMS Body: " + body);
+                        forwardToTraccar(context, sender, body);
+                    }
                 }
             }
         }
@@ -42,9 +46,8 @@ public class SMSReceiver extends BroadcastReceiver {
 
     /**
      * Forward incoming SMS directly to Traccar server via TCP
-     * No parsing, no transformation - just pass it through
      */
-    private void forwardToTraccar(Context context, String sender, String smsBody) {
+    private void forwardToTraccar(Context context, String sender, Object smsData) {
         // Get Traccar server configuration
         String traccarHost = PreferenceManager.getTraccarHost(context);
         int traccarPort = PreferenceManager.getTraccarPort(context);
@@ -53,8 +56,11 @@ public class SMSReceiver extends BroadcastReceiver {
         new Thread(() -> {
             try {
                 // Send SMS directly to Traccar
-                // Traccar will handle parsing based on its configured protocol
-                TraccarTCPClient.getInstance().sendMessage(traccarHost, traccarPort, smsBody);
+                if (smsData instanceof byte[]) {
+                    TraccarTCPClient.getInstance().sendMessage(traccarHost, traccarPort, (byte[]) smsData);
+                } else {
+                    TraccarTCPClient.getInstance().sendMessage(traccarHost, traccarPort, (String) smsData);
+                }
                 
                 Log.d(TAG, "SMS forwarded to Traccar (" + traccarHost + ":" + traccarPort + ")");
             } catch (Exception e) {

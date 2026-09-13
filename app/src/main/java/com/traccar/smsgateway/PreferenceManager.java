@@ -3,7 +3,35 @@ package com.traccar.smsgateway;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class PreferenceManager {
+
+    public static class DeviceMapping {
+        private final String phoneNumber;
+        private final String deviceId;
+        private final boolean binarySms;
+
+        public DeviceMapping(String phoneNumber, String deviceId, boolean binarySms) {
+            this.phoneNumber = phoneNumber;
+            this.deviceId = deviceId;
+            this.binarySms = binarySms;
+        }
+
+        public String getPhoneNumber() {
+            return phoneNumber;
+        }
+
+        public String getDeviceId() {
+            return deviceId;
+        }
+
+        public boolean isBinarySms() {
+            return binarySms;
+        }
+    }
     
     private static final String PREFS_NAME = "TraccarSMSGateway";
     private static final String KEY_TRACCAR_HOST = "traccar_host";
@@ -175,6 +203,37 @@ public class PreferenceManager {
      */
     public static boolean isBinarySmsEnabled(Context context) {
         return getPreferences(context).getBoolean(KEY_BINARY_SMS, false);
+    }
+
+    /**
+     * Get all mapped devices
+     */
+    public static List<DeviceMapping> getAllDeviceMappings(Context context) {
+        List<DeviceMapping> list = new ArrayList<>();
+        SharedPreferences prefs = getPreferences(context);
+        Map<String, ?> allEntries = prefs.getAll();
+
+        for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(KEY_DEVICE_ID_PREFIX)) {
+                String cleanNumber = key.substring(KEY_DEVICE_ID_PREFIX.length());
+                String deviceId = entry.getValue() != null ? entry.getValue().toString() : cleanNumber;
+                boolean binary = isBinarySmsEnabled(context, cleanNumber);
+                list.add(new DeviceMapping(cleanNumber, deviceId, binary));
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Remove device mapping for a phone number
+     */
+    public static void removeDeviceMapping(Context context, String phoneNumber) {
+        String cleanNumber = cleanPhoneNumber(phoneNumber);
+        SharedPreferences.Editor editor = getPreferences(context).edit();
+        editor.remove(KEY_DEVICE_ID_PREFIX + cleanNumber);
+        editor.remove(KEY_BINARY_SMS_PREFIX + cleanNumber);
+        editor.apply();
     }
 
     /**

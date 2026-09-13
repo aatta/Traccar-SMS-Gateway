@@ -25,7 +25,7 @@
             android:text="Server Configuration"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp" />
 
         <!-- Traccar Host -->
@@ -88,69 +88,58 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- Device Mapping Section -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Device Mapping"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Map phone numbers to device IDs"
-            android:textSize="12sp"
-            android:textColor="@android:color/darker_gray"
-            android:layout_marginBottom="8dp" />
-
-        <!-- Phone Number -->
-        <EditText
-            android:id="@+id/editPhoneNumber"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Tracker Phone Number (e.g., +923001234567)"
-            android:inputType="phone"
-            android:layout_marginBottom="8dp" />
-
-        <!-- Device ID -->
-        <EditText
-            android:id="@+id/editDeviceId"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Device ID in Traccar"
-            android:inputType="text"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Binary SMS Mode Switch -->
+        <!-- Device Mapping Section Header & Add Button -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+            android:gravity="center_vertical"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp">
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Binary SMS Mode"
-                android:textSize="14sp" />
+                android:text="Device Mapping"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
-            <Switch
-                android:id="@+id/switchBinarySms"
+            <Button
+                android:id="@+id/buttonAddDevice"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:text="+ Add Device"
+                style="?android:attr/buttonStyleSmall" />
         </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Use for trackers like Teltonika FM2200 that send binary data"
+            android:text="Mapped phone numbers to Traccar device IDs:"
             android:textSize="12sp"
             android:textColor="@android:color/darker_gray"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
+
+        <!-- Dynamic Container for Mapped Device Cards/Items -->
+        <LinearLayout
+            android:id="@+id/containerDeviceList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <!-- Empty state placeholder text -->
+            <TextView
+                android:id="@+id/textEmptyDevices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No devices mapped yet. Tap '+ Add Device' above."
+                android:textSize="13sp"
+                android:textColor="@android:color/darker_gray"
+                android:padding="12dp"
+                android:gravity="center" />
+        </LinearLayout>
 
         <!-- Buttons -->
         <LinearLayout
@@ -160,25 +149,20 @@
             android:layout_marginBottom="16dp">
 
             <Button
-                android:id="@+id/buttonMapDevice"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Map Device" />
-
-            <Button
                 android:id="@+id/buttonSave"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Save" />
+                android:text="Save Settings"
+                android:layout_marginEnd="4dp" />
 
             <Button
                 android:id="@+id/buttonTest"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Test" />
+                android:text="Test Connection"
+                android:layout_marginStart="4dp" />
         </LinearLayout>
 
         <!-- Status -->
@@ -197,7 +181,7 @@
             android:id="@+id/textInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Instructions:\n1. Enter your Traccar server IP and port (default 5078)\n2. Map tracker phone numbers to device IDs\n3. Enable gateway and tap Save\n4. Test connection to verify\n5. Place old Android phone on WiFi - it will automatically receive SMS and forward to Traccar"
+            android:text="Instructions:\n1. Enter your Traccar server IP and port (default 5078)\n2. Add device mappings for tracker phone numbers\n3. Enable gateway and tap Save Settings\n4. Test connection to verify\n5. Place Android device on network - it will automatically forward incoming tracker SMS to Traccar"
             android:textSize="11sp"
             android:textColor="@android:color/darker_gray"
             android:layout_marginTop="24dp"

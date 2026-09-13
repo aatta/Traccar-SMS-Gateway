@@ -57,6 +57,32 @@ public class TraccarTCPClient {
     }
 
     /**
+     * Send Teltonika AVL Data Packet with optional IMEI identification handshake
+     */
+    public synchronized void sendTeltonikaAvlData(String host, int port, String imei, byte[] avlTcpPacket) throws Exception {
+        if (!isConnected || socket == null || !socket.isConnected()) {
+            connect(host, port);
+            if (imei != null && !imei.isEmpty()) {
+                byte[] imeiMsg = TeltonikaAvlConverter.buildImeiMessage(imei);
+                outputStream.write(imeiMsg);
+                outputStream.flush();
+                AppLogger.d(TAG, "Sent Teltonika IMEI handshake: " + imei);
+            }
+        }
+
+        try {
+            outputStream.write(avlTcpPacket);
+            outputStream.flush();
+            AppLogger.d(TAG, "Sent Teltonika AVL TCP packet: " + avlTcpPacket.length + " bytes");
+        } catch (Exception e) {
+            isConnected = false;
+            disconnect();
+            AppLogger.e(TAG, "Error sending Teltonika AVL packet: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
      * Send raw bytes to Traccar server
      */
     public void sendMessage(String host, int port, byte[] data) throws Exception {

@@ -11,6 +11,7 @@ public class TraccarTCPClient {
     private Socket socket;
     private OutputStream outputStream;
     private boolean isConnected = false;
+    private String currentConnectedImei = null;
 
     // Singleton pattern
     public static synchronized TraccarTCPClient getInstance() {
@@ -60,12 +61,18 @@ public class TraccarTCPClient {
      * Send Teltonika AVL Data Packet with optional IMEI identification handshake
      */
     public synchronized void sendTeltonikaAvlData(String host, int port, String imei, byte[] avlTcpPacket) throws Exception {
+        // If connected to a different IMEI or socket is disconnected, disconnect first
+        if (isConnected && (currentConnectedImei == null || !currentConnectedImei.equals(imei))) {
+            disconnect();
+        }
+
         if (!isConnected || socket == null || !socket.isConnected()) {
             connect(host, port);
             if (imei != null && !imei.isEmpty()) {
                 byte[] imeiMsg = TeltonikaAvlConverter.buildImeiMessage(imei);
                 outputStream.write(imeiMsg);
                 outputStream.flush();
+                currentConnectedImei = imei;
                 AppLogger.d(TAG, "Sent Teltonika IMEI handshake: " + imei);
             }
         }
@@ -75,10 +82,20 @@ public class TraccarTCPClient {
             outputStream.flush();
             AppLogger.d(TAG, "Sent Teltonika AVL TCP packet: " + avlTcpPacket.length + " bytes");
         } catch (Exception e) {
-            isConnected = false;
+            // Reconnect once if socket write failed (e.g. idle timeout disconnect)
+            AppLogger.w(TAG, "Failed sending AVL packet, reconnecting... " + e.getMessage());
             disconnect();
-            AppLogger.e(TAG, "Error sending Teltonika AVL packet: " + e.getMessage(), e);
-            throw e;
+            connect(host, port);
+            if (imei != null && !imei.isEmpty()) {
+                byte[] imeiMsg = TeltonikaAvlConverter.buildImeiMessage(imei);
+                outputStream.write(imeiMsg);
+                outputStream.flush();
+                currentConnectedImei = imei;
+                AppLogger.d(TAG, "Sent Teltonika IMEI handshake on reconnect: " + imei);
+            }
+            outputStream.write(avlTcpPacket);
+            outputStream.flush();
+            AppLogger.d(TAG, "Sent Teltonika AVL TCP packet after reconnect: " + avlTcpPacket.length + " bytes");
         }
     }
 
@@ -155,8 +172,11 @@ public class TraccarTCPClient {
                 socket.close();
             }
             isConnected = false;
+            currentConnectedImei = null;
             AppLogger.d(TAG, "Disconnected from Traccar server");
         } catch (Exception e) {
+            isConnected = false;
+            currentConnectedImei = null;
             AppLogger.e(TAG, "Error disconnecting: " + e.getMessage(), e);
         }
     }

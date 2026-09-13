@@ -9,6 +9,7 @@ public class PreferenceManager {
     private static final String KEY_TRACCAR_HOST = "traccar_host";
     private static final String KEY_TRACCAR_PORT = "traccar_port";
     private static final String KEY_DEVICE_ID_PREFIX = "device_id_";
+    private static final String KEY_BINARY_SMS_PREFIX = "binary_sms_";
     private static final String KEY_ENABLED = "gateway_enabled";
     private static final String KEY_AUTO_START = "auto_start";
     private static final String KEY_LOG_ENABLED = "log_enabled";
@@ -16,6 +17,16 @@ public class PreferenceManager {
 
     private static SharedPreferences getPreferences(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * Clean phone number by removing non-numeric characters
+     */
+    public static String cleanPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null) {
+            return "";
+        }
+        return phoneNumber.replaceAll("[^0-9]", "");
     }
 
     /**
@@ -55,8 +66,9 @@ public class PreferenceManager {
      * If not mapped, returns the phone number as device ID
      */
     public static void setDeviceId(Context context, String phoneNumber, String deviceId) {
+        String cleanNumber = cleanPhoneNumber(phoneNumber);
         SharedPreferences.Editor editor = getPreferences(context).edit();
-        editor.putString(KEY_DEVICE_ID_PREFIX + phoneNumber, deviceId);
+        editor.putString(KEY_DEVICE_ID_PREFIX + cleanNumber, deviceId);
         editor.apply();
     }
 
@@ -64,8 +76,7 @@ public class PreferenceManager {
      * Get device ID for a given phone number
      */
     public static String getDeviceId(Context context, String phoneNumber) {
-        // Clean phone number (remove +, spaces, etc.)
-        String cleanNumber = phoneNumber.replaceAll("[^0-9]", "");
+        String cleanNumber = cleanPhoneNumber(phoneNumber);
         
         String deviceId = getPreferences(context).getString(KEY_DEVICE_ID_PREFIX + cleanNumber, null);
         
@@ -126,7 +137,32 @@ public class PreferenceManager {
     }
 
     /**
-     * Enable/disable binary SMS mode
+     * Enable/disable binary SMS mode for a specific device (by phone number)
+     */
+    public static void setBinarySmsEnabled(Context context, String phoneNumber, boolean enabled) {
+        String cleanNumber = cleanPhoneNumber(phoneNumber);
+        SharedPreferences.Editor editor = getPreferences(context).edit();
+        editor.putBoolean(KEY_BINARY_SMS_PREFIX + cleanNumber, enabled);
+        editor.apply();
+    }
+
+    /**
+     * Check if binary SMS mode is enabled for a specific device (by phone number)
+     */
+    public static boolean isBinarySmsEnabled(Context context, String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return isBinarySmsEnabled(context);
+        }
+        String cleanNumber = cleanPhoneNumber(phoneNumber);
+        SharedPreferences prefs = getPreferences(context);
+        if (prefs.contains(KEY_BINARY_SMS_PREFIX + cleanNumber)) {
+            return prefs.getBoolean(KEY_BINARY_SMS_PREFIX + cleanNumber, false);
+        }
+        return isBinarySmsEnabled(context);
+    }
+
+    /**
+     * Enable/disable binary SMS mode globally (fallback)
      */
     public static void setBinarySmsEnabled(Context context, boolean enabled) {
         SharedPreferences.Editor editor = getPreferences(context).edit();
@@ -135,7 +171,7 @@ public class PreferenceManager {
     }
 
     /**
-     * Check if binary SMS mode is enabled
+     * Check if binary SMS mode is enabled globally (fallback)
      */
     public static boolean isBinarySmsEnabled(Context context) {
         return getPreferences(context).getBoolean(KEY_BINARY_SMS, false);

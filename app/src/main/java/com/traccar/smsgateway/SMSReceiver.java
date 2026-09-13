@@ -29,7 +29,7 @@ public class SMSReceiver extends BroadcastReceiver {
                     SmsMessage message = SmsMessage.createFromPdu((byte[]) pdu, "3gpp");
                     String sender = message.getOriginatingAddress();
                     
-                    if (PreferenceManager.isBinarySmsEnabled(context)) {
+                    if (PreferenceManager.isBinarySmsEnabled(context, sender)) {
                         byte[] userData = message.getUserData();
                         Log.d(TAG, "SMS Received from: " + sender + " (Binary Mode)");
                         forwardToTraccar(context, sender, userData);

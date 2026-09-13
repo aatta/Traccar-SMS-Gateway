@@ -88,34 +88,6 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- Binary SMS Mode Switch -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Binary SMS Mode"
-                android:textSize="14sp" />
-
-            <Switch
-                android:id="@+id/switchBinarySms"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Use for trackers like Teltonika FM2200 that send binary data"
-            android:textSize="12sp"
-            android:textColor="@android:color/darker_gray"
-            android:layout_marginBottom="16dp" />
-
         <!-- Device Mapping Section -->
         <TextView
             android:layout_width="match_parent"
@@ -150,6 +122,34 @@
             android:layout_height="wrap_content"
             android:hint="Device ID in Traccar"
             android:inputType="text"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Binary SMS Mode Switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Binary SMS Mode"
+                android:textSize="14sp" />
+
+            <Switch
+                android:id="@+id/switchBinarySms"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Use for trackers like Teltonika FM2200 that send binary data"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
             android:layout_marginBottom="16dp" />
 
         <!-- Buttons -->

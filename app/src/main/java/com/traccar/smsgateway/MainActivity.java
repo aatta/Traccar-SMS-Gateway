@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Switch;
@@ -20,7 +22,10 @@ public class MainActivity extends AppCompatActivity {
     private EditText editTraccarPort;
     private Switch switchEnabled;
     private Switch switchAutoStart;
+    private EditText editPhoneNumber;
+    private EditText editDeviceId;
     private Switch switchBinarySms;
+    private Button buttonMapDevice;
     private Button buttonSave;
     private Button buttonTest;
     private TextView textStatus;
@@ -44,7 +49,10 @@ public class MainActivity extends AppCompatActivity {
         editTraccarPort = findViewById(R.id.editTraccarPort);
         switchEnabled = findViewById(R.id.switchEnabled);
         switchAutoStart = findViewById(R.id.switchAutoStart);
+        editPhoneNumber = findViewById(R.id.editPhoneNumber);
+        editDeviceId = findViewById(R.id.editDeviceId);
         switchBinarySms = findViewById(R.id.switchBinarySms);
+        buttonMapDevice = findViewById(R.id.buttonMapDevice);
         buttonSave = findViewById(R.id.buttonSave);
         buttonTest = findViewById(R.id.buttonTest);
         textStatus = findViewById(R.id.textStatus);
@@ -56,12 +64,58 @@ public class MainActivity extends AppCompatActivity {
         editTraccarPort.setText(String.valueOf(PreferenceManager.getTraccarPort(this)));
         switchEnabled.setChecked(PreferenceManager.isEnabled(this));
         switchAutoStart.setChecked(PreferenceManager.isAutoStartEnabled(this));
-        switchBinarySms.setChecked(PreferenceManager.isBinarySmsEnabled(this));
+        loadDeviceConfigForPhoneNumber(editPhoneNumber.getText().toString().trim());
+    }
+
+    private void loadDeviceConfigForPhoneNumber(String phoneNumber) {
+        if (phoneNumber.isEmpty()) {
+            editDeviceId.setText("");
+            switchBinarySms.setChecked(false);
+        } else {
+            editDeviceId.setText(PreferenceManager.getDeviceId(this, phoneNumber));
+            switchBinarySms.setChecked(PreferenceManager.isBinarySmsEnabled(this, phoneNumber));
+        }
     }
 
     private void setupListeners() {
         buttonSave.setOnClickListener(v -> saveConfiguration());
         buttonTest.setOnClickListener(v -> testConnection());
+        buttonMapDevice.setOnClickListener(v -> mapDevice());
+
+        editPhoneNumber.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                loadDeviceConfigForPhoneNumber(s.toString().trim());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+    }
+
+    private void mapDevice() {
+        String phoneNumber = editPhoneNumber.getText().toString().trim();
+        String deviceId = editDeviceId.getText().toString().trim();
+        boolean binarySms = switchBinarySms.isChecked();
+
+        if (phoneNumber.isEmpty()) {
+            Toast.makeText(this, "Please enter a tracker phone number", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (deviceId.isEmpty()) {
+            deviceId = PreferenceManager.cleanPhoneNumber(phoneNumber);
+            editDeviceId.setText(deviceId);
+        }
+
+        PreferenceManager.setDeviceId(this, phoneNumber, deviceId);
+        PreferenceManager.setBinarySmsEnabled(this, phoneNumber, binarySms);
+
+        updateStatus("✓ Device mapped: " + phoneNumber + " -> " + deviceId + (binarySms ? " (Binary)" : ""));
+        Toast.makeText(this, "Device mapped successfully", Toast.LENGTH_SHORT).show();
     }
 
     private void saveConfiguration() {
@@ -70,10 +124,9 @@ public class MainActivity extends AppCompatActivity {
             String portStr = editTraccarPort.getText().toString().trim();
             boolean enabled = switchEnabled.isChecked();
             boolean autoStart = switchAutoStart.isChecked();
-            boolean binarySms = switchBinarySms.isChecked();
 
             if (host.isEmpty() || portStr.isEmpty()) {
-                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please fill in all server fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -83,10 +136,14 @@ public class MainActivity extends AppCompatActivity {
             PreferenceManager.setTraccarPort(this, port);
             PreferenceManager.setEnabled(this, enabled);
             PreferenceManager.setAutoStart(this, autoStart);
-            PreferenceManager.setBinarySmsEnabled(this, binarySms);
 
-            updateStatus("✓ Configuration saved successfully!");
-            Toast.makeText(this, "Configuration saved", Toast.LENGTH_SHORT).show();
+            String phoneNumber = editPhoneNumber.getText().toString().trim();
+            if (!phoneNumber.isEmpty()) {
+                mapDevice();
+            } else {
+                updateStatus("✓ Configuration saved successfully!");
+                Toast.makeText(this, "Configuration saved", Toast.LENGTH_SHORT).show();
+            }
         } catch (NumberFormatException e) {
             Toast.makeText(this, "Invalid port number", Toast.LENGTH_SHORT).show();
         }

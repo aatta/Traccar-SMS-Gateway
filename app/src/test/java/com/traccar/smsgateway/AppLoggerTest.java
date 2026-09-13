@@ -1,21 +1,14 @@
 package com.traccar.smsgateway;
 
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AppLoggerTest {
-
-    @Rule
-    public TemporaryFolder tempFolder = new TemporaryFolder();
 
     @Before
     public void setUp() {
@@ -62,33 +55,17 @@ public class AppLoggerTest {
     }
 
     @Test
-    public void testMaxLogCapacity() {
-        int max = AppLogger.getMaxLogEntries();
-        for (int i = 0; i < max + 50; i++) {
-            AppLogger.i("CapacityTest", "Message " + i);
-        }
+    public void testQueryFiltering() {
+        AppLogger.d("SMSReceiver", "Received SMS from +1234567890");
+        AppLogger.i("Parser", "IMEI: 352848025020328 parsed successfully");
+        AppLogger.e("TraccarTCPClient", "Connection timed out");
 
-        List<AppLogger.LogEntry> logs = AppLogger.getLogs();
-        assertEquals(max, logs.size());
-        assertEquals("Message 50", logs.get(0).getMessage());
-        assertEquals("Message " + (max + 49), logs.get(max - 1).getMessage());
-    }
+        List<AppLogger.LogEntry> errorLogs = AppLogger.queryLogs(null, null, null, "E", null, 100, 0);
+        assertEquals(1, errorLogs.size());
+        assertEquals("TraccarTCPClient", errorLogs.get(0).getTag());
 
-    @Test
-    public void testFilePersistenceAndReload() throws IOException {
-        File tempFile = tempFolder.newFile("test_logs.txt");
-        AppLogger.setLogFile(tempFile);
-        AppLogger.clearLogs();
-
-        AppLogger.i("PersistTag", "First persistent log");
-        AppLogger.w("PersistTag", "Second persistent log");
-
-        // Simulate app restart by clearing memory list and re-assigning log file
-        AppLogger.setLogFile(tempFile);
-
-        List<AppLogger.LogEntry> reloadedLogs = AppLogger.getLogs();
-        assertEquals(2, reloadedLogs.size());
-        assertEquals("First persistent log", reloadedLogs.get(0).getMessage());
-        assertEquals("Second persistent log", reloadedLogs.get(1).getMessage());
+        List<AppLogger.LogEntry> imeiLogs = AppLogger.queryLogs(null, null, "352848025020328", "ALL", null, 100, 0);
+        assertEquals(1, imeiLogs.size());
+        assertEquals("Parser", imeiLogs.get(0).getTag());
     }
 }

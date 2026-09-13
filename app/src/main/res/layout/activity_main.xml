@@ -141,7 +141,7 @@
                 android:gravity="center" />
         </LinearLayout>
 
-        <!-- Buttons -->
+        <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -165,12 +165,29 @@
                 android:layout_marginStart="4dp" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/buttonViewLogs"
+        <!-- Navigation Screens Buttons -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Debug / View Logs"
-            android:layout_marginBottom="16dp" />
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/buttonViewSmsList"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="SMS Messages DB"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/buttonViewLogs"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="System Logs"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
 
         <!-- Status -->
         <TextView

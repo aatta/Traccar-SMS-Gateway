@@ -28,6 +28,18 @@
             </intent-filter>
         </activity>
 
+        <!-- SMS Table List Activity -->
+        <activity
+            android:name=".SmsListActivity"
+            android:exported="false"
+            android:label="SMS Database Messages" />
+
+        <!-- Log Viewer Activity -->
+        <activity
+            android:name=".LogViewerActivity"
+            android:exported="false"
+            android:label="System Logs" />
+
         <!-- SMS Broadcast Receiver -->
         <receiver
             android:name=".SMSReceiver"
@@ -35,6 +47,15 @@
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Network Change Receiver for Auto-Retry -->
+        <receiver
+            android:name=".NetworkChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
             </intent-filter>
         </receiver>
 

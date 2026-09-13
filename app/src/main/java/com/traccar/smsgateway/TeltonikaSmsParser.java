@@ -140,8 +140,11 @@ public class TeltonikaSmsParser {
         BitStream stream = new BitStream(data);
 
         int codecId = (int) stream.readBits(8);
+        if (codecId == 8) {
+            return parseCodec8(data);
+        }
         if (codecId != 4) {
-            return new SmsParseResult(false, "Invalid CodecId: " + codecId + ". Expected 4 for Teltonika 24-hour SMS.",
+            return new SmsParseResult(false, "Invalid CodecId: " + codecId + ". Expected 4 or 8 for Teltonika SMS.",
                     codecId, 0, 0, 0, null, null);
         }
 
@@ -204,5 +207,120 @@ public class TeltonikaSmsParser {
         }
 
         return new SmsParseResult(true, null, codecId, timestampSeconds, baseTimestampMillis, elementCount, imei, elements);
+    }
+
+    private static SmsParseResult parseCodec8(byte[] data) {
+        if (data.length < 2) {
+            return new SmsParseResult(false, "Data too short for Codec 8 header", 8, 0, 0, 0, null, null);
+        }
+
+        int idx = 1; // data[0] is codecId 8
+        int elementCount = data[idx++] & 0xFF;
+        List<GpsElement> elements = new ArrayList<>();
+
+        for (int i = 0; i < elementCount; i++) {
+            if (idx + 24 > data.length) {
+                return new SmsParseResult(false, "Truncated Codec 8 record data at index " + i, 8, 0, 0, 0, null, null);
+            }
+
+            // Timestamp: 8 bytes big-endian long
+            long timestampMillis = 0;
+            for (int b = 0; b < 8; b++) {
+                timestampMillis = (timestampMillis << 8) | (data[idx++] & 0xFF);
+            }
+
+            // Priority: 1 byte
+            int priority = data[idx++] & 0xFF;
+
+            // Longitude: 4 bytes big-endian int
+            int lonInt = 0;
+            for (int b = 0; b < 4; b++) {
+                lonInt = (lonInt << 8) | (data[idx++] & 0xFF);
+            }
+
+            // Latitude: 4 bytes big-endian int
+            int latInt = 0;
+            for (int b = 0; b < 4; b++) {
+                latInt = (latInt << 8) | (data[idx++] & 0xFF);
+            }
+
+            // Altitude: 2 bytes big-endian short
+            short altitude = 0;
+            for (int b = 0; b < 2; b++) {
+                altitude = (short) ((altitude << 8) | (data[idx++] & 0xFF));
+            }
+
+            // Angle: 2 bytes big-endian unsigned short
+            int angle = 0;
+            for (int b = 0; b < 2; b++) {
+                angle = (angle << 8) | (data[idx++] & 0xFF);
+            }
+
+            // Satellites: 1 byte
+            int satellites = data[idx++] & 0xFF;
+
+            // Speed: 2 bytes big-endian unsigned short
+            int speed = 0;
+            for (int b = 0; b < 2; b++) {
+                speed = (speed << 8) | (data[idx++] & 0xFF);
+            }
+
+            double lonDeg = lonInt / 10000000.0;
+            double latDeg = latInt / 10000000.0;
+
+            // Skip IO Elements:
+            if (idx + 2 > data.length) {
+                return new SmsParseResult(false, "Truncated Codec 8 IO element header", 8, 0, 0, 0, null, null);
+            }
+            int eventIoId = data[idx++] & 0xFF;
+            int totalIo = data[idx++] & 0xFF;
+
+            // N1: 1-byte properties count
+            if (idx >= data.length) return new SmsParseResult(false, "Truncated Codec 8 N1 IO count", 8, 0, 0, 0, null, null);
+            int n1 = data[idx++] & 0xFF;
+            idx += n1 * 2; // Each N1 property has 1-byte ID + 1-byte Value
+
+            // N2: 2-byte properties count
+            if (idx > data.length) return new SmsParseResult(false, "Truncated Codec 8 N1 IO properties", 8, 0, 0, 0, null, null);
+            if (idx >= data.length) return new SmsParseResult(false, "Truncated Codec 8 N2 IO count", 8, 0, 0, 0, null, null);
+            int n2 = data[idx++] & 0xFF;
+            idx += n2 * 3; // Each N2 property has 1-byte ID + 2-byte Value
+
+            // N4: 4-byte properties count
+            if (idx > data.length) return new SmsParseResult(false, "Truncated Codec 8 N2 IO properties", 8, 0, 0, 0, null, null);
+            if (idx >= data.length) return new SmsParseResult(false, "Truncated Codec 8 N4 IO count", 8, 0, 0, 0, null, null);
+            int n4 = data[idx++] & 0xFF;
+            idx += n4 * 5; // Each N4 property has 1-byte ID + 4-byte Value
+
+            // N8: 8-byte properties count
+            if (idx > data.length) return new SmsParseResult(false, "Truncated Codec 8 N4 IO properties", 8, 0, 0, 0, null, null);
+            if (idx >= data.length) return new SmsParseResult(false, "Truncated Codec 8 N8 IO count", 8, 0, 0, 0, null, null);
+            int n8 = data[idx++] & 0xFF;
+            idx += n8 * 9; // Each N8 property has 1-byte ID + 8-byte Value
+
+            if (idx > data.length) {
+                return new SmsParseResult(false, "Truncated Codec 8 IO properties data", 8, 0, 0, 0, null, null);
+            }
+
+            elements.add(new GpsElement(i, true, false, lonInt, latInt, lonDeg, latDeg, speed, timestampMillis));
+        }
+
+        if (idx < data.length) {
+            int elementCount2 = data[idx++] & 0xFF;
+        }
+
+        String imei = null;
+        if (idx + 8 <= data.length) {
+            long imeiVal = 0;
+            for (int b = 0; b < 8; b++) {
+                imeiVal = (imeiVal << 8) | (data[idx + b] & 0xFF);
+            }
+            imei = Long.toUnsignedString(imeiVal);
+        }
+
+        long baseTimestampMillis = elements.isEmpty() ? 0 : elements.get(elements.size() - 1).getTimestampMillis();
+        long timestampSeconds = baseTimestampMillis / 1000L;
+
+        return new SmsParseResult(true, null, 8, timestampSeconds, baseTimestampMillis, elementCount, imei, elements);
     }
 }

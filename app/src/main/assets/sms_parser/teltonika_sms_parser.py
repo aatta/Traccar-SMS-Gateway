@@ -51,8 +51,11 @@ def parse_teltonika_sms(hex_string):
     codec_id = stream.read_bits(8)
     result['codec_id'] = codec_id
 
+    if codec_id == 8:
+        return parse_codec8_sms(data, result)
+
     if codec_id != 4:
-        result['error'] = f'Invalid CodecId: {codec_id}. Expected 4 for 24-hour SMS.'
+        result['error'] = f'Invalid CodecId: {codec_id}. Expected 4 or 8 for Teltonika SMS.'
         return result
 
     # Parse Timestamp (35 bits)
@@ -150,6 +153,88 @@ def parse_teltonika_sms(hex_string):
     imei = int.from_bytes(imei_bytes, byteorder='big')
     result['imei'] = str(imei)
     result['imei_hex'] = f'{imei:016x}'
+
+    result['success'] = True
+    return result
+
+
+def parse_codec8_sms(data, result):
+    import struct
+    from datetime import datetime, timezone
+
+    if len(data) < 2:
+        result['error'] = 'Data too short for Codec 8 header'
+        return result
+
+    idx = 1
+    element_count = data[idx]
+    idx += 1
+    result['element_count'] = element_count
+
+    for i in range(element_count):
+        if idx + 24 > len(data):
+            result['error'] = f'Truncated Codec 8 record data at index {i}'
+            return result
+
+        ts_ms = struct.unpack('>Q', data[idx:idx+8])[0]
+        priority = data[idx+8]
+        lon_int = struct.unpack('>i', data[idx+9:idx+13])[0]
+        lat_int = struct.unpack('>i', data[idx+13:idx+17])[0]
+        alt = struct.unpack('>h', data[idx+17:idx+19])[0]
+        angle = struct.unpack('>H', data[idx+19:idx+21])[0]
+        sats = data[idx+21]
+        speed = struct.unpack('>H', data[idx+22:idx+24])[0]
+        idx += 24
+
+        lon_deg = lon_int / 10000000.0
+        lat_deg = lat_int / 10000000.0
+
+        if idx + 2 > len(data):
+            result['error'] = 'Truncated Codec 8 IO element header'
+            return result
+
+        event_io_id = data[idx]
+        total_io = data[idx+1]
+        idx += 2
+
+        n1 = data[idx]
+        idx += 1 + n1 * 2
+
+        n2 = data[idx]
+        idx += 1 + n2 * 3
+
+        n4 = data[idx]
+        idx += 1 + n4 * 5
+
+        n8 = data[idx]
+        idx += 1 + n8 * 9
+
+        elem_time = datetime.fromtimestamp(ts_ms / 1000.0, timezone.utc)
+
+        entry = {
+            'index': i,
+            'valid': True,
+            'timestamp': elem_time.isoformat(),
+            'latitude_deg': round(lat_deg, 8),
+            'longitude_deg': round(lon_deg, 8),
+            'speed_kmh': speed,
+            'differential_coords': False,
+            'time_offset_hours': 0
+        }
+        result['entries'].append(entry)
+
+    if idx < len(data):
+        idx += 1  # element count 2
+
+    if idx + 8 <= len(data):
+        imei_bytes = data[idx:idx+8]
+        imei = int.from_bytes(imei_bytes, byteorder='big')
+        result['imei'] = str(imei)
+        result['imei_hex'] = f'{imei:016x}'
+
+    if result['entries']:
+        result['timestamp'] = result['entries'][-1]['timestamp']
+        result['timestamp_utc'] = result['entries'][-1]['timestamp'] + ' UTC'
 
     result['success'] = True
     return result

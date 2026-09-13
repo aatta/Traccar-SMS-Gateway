@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Traccar SMS Gateway"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Server Configuration Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Server Configuration"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Traccar Host -->
+        <EditText
+            android:id="@+id/editTraccarHost"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Traccar Server IP/Domain"
+            android:text="192.168.1.100"
+            android:inputType="text"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Traccar Port -->
+        <EditText
+            android:id="@+id/editTraccarPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Traccar Server Port"
+            android:text="5078"
+            android:inputType="number"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Enable Gateway Switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Enable Gateway"
+                android:textSize="14sp" />
+
+            <Switch
+                android:id="@+id/switchEnabled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Auto Start Switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Auto Start on Boot"
+                android:textSize="14sp" />
+
+            <Switch
+                android:id="@+id/switchAutoStart"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Device Mapping Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Device Mapping"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Map phone numbers to device IDs"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Phone Number -->
+        <EditText
+            android:id="@+id/editPhoneNumber"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Tracker Phone Number (e.g., +923001234567)"
+            android:inputType="phone"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Device ID -->
+        <EditText
+            android:id="@+id/editDeviceId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Device ID in Traccar"
+            android:inputType="text"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/buttonMapDevice"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Map Device" />
+
+            <Button
+                android:id="@+id/buttonSave"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Save" />
+
+            <Button
+                android:id="@+id/buttonTest"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Test" />
+        </LinearLayout>
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/textStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Status: Ready"
+            android:textSize="12sp"
+            android:padding="12dp"
+            android:background="@android:color/darker_gray"
+            android:textColor="@android:color/white" />
+
+        <!-- Instructions -->
+        <TextView
+            android:id="@+id/textInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Instructions:\n1. Enter your Traccar server IP and port (default 5078)\n2. Map tracker phone numbers to device IDs\n3. Enable gateway and tap Save\n4. Test connection to verify\n5. Place old Android phone on WiFi - it will automatically receive SMS and forward to Traccar"
+            android:textSize="11sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginTop="24dp"
+            android:padding="12dp"
+            android:background="@drawable/info_background" />
+
+    </LinearLayout>
+
+</ScrollView>

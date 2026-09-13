@@ -1,7 +1,5 @@
 package com.traccar.smsgateway;
 
-import android.util.Log;
-
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +28,7 @@ public class TraccarTCPClient {
      */
     public void connect(String host, int port) throws Exception {
         if (isConnected && socket != null && socket.isConnected()) {
-            Log.d(TAG, "Already connected to " + host + ":" + port);
+            AppLogger.d(TAG, "Already connected to " + host + ":" + port);
             return;
         }
 
@@ -38,10 +36,10 @@ public class TraccarTCPClient {
             socket = new Socket(host, port);
             outputStream = socket.getOutputStream();
             isConnected = true;
-            Log.d(TAG, "Connected to Traccar server: " + host + ":" + port);
+            AppLogger.d(TAG, "Connected to Traccar server: " + host + ":" + port);
         } catch (Exception e) {
             isConnected = false;
-            Log.e(TAG, "Failed to connect to Traccar server: " + e.getMessage());
+            AppLogger.e(TAG, "Failed to connect to Traccar server: " + e.getMessage(), e);
             throw e;
         }
     }
@@ -55,7 +53,7 @@ public class TraccarTCPClient {
             message = message + "\n";
         }
         sendMessage(host, port, message.getBytes(StandardCharsets.UTF_8));
-        Log.d(TAG, "Sent to Traccar: " + message.trim());
+        AppLogger.d(TAG, "Sent to Traccar: " + message.trim());
     }
 
     /**
@@ -70,11 +68,11 @@ public class TraccarTCPClient {
         try {
             outputStream.write(data);
             outputStream.flush();
-            Log.d(TAG, "Sent raw bytes to Traccar: " + data.length + " bytes");
+            AppLogger.d(TAG, "Sent raw bytes to Traccar: " + data.length + " bytes");
         } catch (Exception e) {
             isConnected = false;
             disconnect();
-            Log.e(TAG, "Error sending message: " + e.getMessage());
+            AppLogger.e(TAG, "Error sending message: " + e.getMessage(), e);
             throw e;
         }
     }
@@ -131,9 +129,9 @@ public class TraccarTCPClient {
                 socket.close();
             }
             isConnected = false;
-            Log.d(TAG, "Disconnected from Traccar server");
+            AppLogger.d(TAG, "Disconnected from Traccar server");
         } catch (Exception e) {
-            Log.e(TAG, "Error disconnecting: " + e.getMessage());
+            AppLogger.e(TAG, "Error disconnecting: " + e.getMessage(), e);
         }
     }
 

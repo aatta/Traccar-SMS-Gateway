@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.telephony.SmsMessage;
-import android.util.Log;
 
 /**
  * SMS Receiver - Simple bridge that forwards all incoming SMS directly to Traccar via TCP
@@ -32,13 +31,13 @@ public class SMSReceiver extends BroadcastReceiver {
                     if (PreferenceManager.isBinarySmsEnabled(context, sender)) {
                         byte[] userData = message.getUserData();
                         String hexData = bytesToHex(userData);
-                        Log.d(TAG, "SMS Received from: " + sender + " (Binary Mode)");
-                        Log.d(TAG, "SMS Binary Content (Hex): " + hexData);
+                        AppLogger.d(TAG, "SMS Received from: " + sender + " (Binary Mode)");
+                        AppLogger.d(TAG, "SMS Binary Content (Hex): " + hexData);
                         forwardToTraccar(context, sender, userData);
                     } else {
                         String body = message.getMessageBody();
-                        Log.d(TAG, "SMS Received from: " + sender);
-                        Log.d(TAG, "SMS Body: " + body);
+                        AppLogger.d(TAG, "SMS Received from: " + sender);
+                        AppLogger.d(TAG, "SMS Body: " + body);
                         forwardToTraccar(context, sender, body);
                     }
                 }
@@ -76,10 +75,9 @@ public class SMSReceiver extends BroadcastReceiver {
                     TraccarTCPClient.getInstance().sendMessage(traccarHost, traccarPort, (String) smsData);
                 }
                 
-                Log.d(TAG, "SMS forwarded to Traccar (" + traccarHost + ":" + traccarPort + ")");
+                AppLogger.d(TAG, "SMS forwarded to Traccar (" + traccarHost + ":" + traccarPort + ")");
             } catch (Exception e) {
-                Log.e(TAG, "Error forwarding SMS to Traccar: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.e(TAG, "Error forwarding SMS to Traccar: " + e.getMessage(), e);
             }
         }).start();
     }

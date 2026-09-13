@@ -66,6 +66,32 @@ public class TeltonikaSmsParserTest {
     }
 
     @Test
+    public void testParseCodec8Sms() throws IOException {
+        String testHex = "0801000001A09C315FDC0227F922400EE092C0002601050B0000F00101F00100000001000140E9D530E7A8";
+        TeltonikaSmsParser.SmsParseResult result = TeltonikaSmsParser.parseHex(testHex);
+
+        assertTrue(result.isSuccess());
+        assertEquals(8, result.getCodecId());
+        assertEquals("352848025020328", result.getImei());
+        assertEquals(1, result.getElementCount());
+        assertEquals(1, result.getElements().size());
+
+        TeltonikaSmsParser.GpsElement elem = result.getElements().get(0);
+        assertTrue(elem.isValid());
+        assertEquals(1789326876636L, elem.getTimestampMillis());
+        assertEquals(24.9598656, elem.getLatitudeDeg(), 0.000001);
+        assertEquals(67.0638656, elem.getLongitudeDeg(), 0.000001);
+        assertEquals(0, elem.getSpeedKmh());
+
+        // Test AVL TCP packet generation for Codec 8 SMS result
+        byte[] tcpPacket = TeltonikaAvlConverter.convertToCodec8TcpPacket(result);
+        assertNotNull(tcpPacket);
+        assertTrue(tcpPacket.length > 12);
+        assertEquals(0x08, tcpPacket[8]);
+        assertEquals(1, tcpPacket[9] & 0xFF);
+    }
+
+    @Test
     public void testInvalidCodecId() {
         String invalidHex = "05C0743932C00000804CEC6B018E0200000140E9D530E7A8";
         TeltonikaSmsParser.SmsParseResult result = TeltonikaSmsParser.parseHex(invalidHex);

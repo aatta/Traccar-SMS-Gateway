@@ -90,6 +90,29 @@ public class PreferenceManagerTest {
         assertEquals(customDeviceId, PreferenceManager.getDeviceId(fakeContext, expectedCleanPhone));
     }
 
+    @Test
+    public void testGetAllDeviceMappingsAndRemove() {
+        String phone1 = "+123456";
+        String phone2 = "+654321";
+
+        PreferenceManager.setDeviceId(fakeContext, phone1, "dev_1");
+        PreferenceManager.setBinarySmsEnabled(fakeContext, phone1, true);
+
+        PreferenceManager.setDeviceId(fakeContext, phone2, "dev_2");
+        PreferenceManager.setBinarySmsEnabled(fakeContext, phone2, false);
+
+        java.util.List<PreferenceManager.DeviceMapping> mappings = PreferenceManager.getAllDeviceMappings(fakeContext);
+        assertEquals(2, mappings.size());
+
+        PreferenceManager.removeDeviceMapping(fakeContext, phone1);
+
+        mappings = PreferenceManager.getAllDeviceMappings(fakeContext);
+        assertEquals(1, mappings.size());
+        assertEquals("654321", mappings.get(0).getPhoneNumber());
+        assertEquals("dev_2", mappings.get(0).getDeviceId());
+        assertFalse(mappings.get(0).isBinarySms());
+    }
+
     private static class FakeContext extends ContextWrapper {
         private final SharedPreferences prefs;
 

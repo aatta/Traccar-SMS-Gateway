@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/dialogTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Map Device"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/dialogEditPhoneNumber"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Tracker Phone Number (e.g., +923001234567)"
+        android:inputType="phone"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/dialogEditDeviceId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Device ID in Traccar"
+        android:inputType="text"
+        android:layout_marginBottom="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Binary SMS Mode"
+            android:textSize="14sp" />
+
+        <Switch
+            android:id="@+id/dialogSwitchBinarySms"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Use for trackers sending binary data (e.g., Teltonika FM2200)"
+        android:textSize="11sp"
+        android:textColor="@android:color/darker_gray" />
+
+</LinearLayout>

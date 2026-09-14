@@ -76,7 +76,13 @@ jobs:
       - name: Rename APK for Release
         run: |
           mkdir -p release_assets
-          cp app/build/outputs/apk/release/app-release.apk release_assets/TraccarSMSGateway-${NEW_VERSION}.apk
+          APK_PATH=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+          if [ -f "$APK_PATH" ]; then
+            cp "$APK_PATH" "release_assets/TraccarSMSGateway-${NEW_VERSION}.apk"
+          else
+            echo "Error: No release APK found in app/build/outputs/apk/release/"
+            exit 1
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

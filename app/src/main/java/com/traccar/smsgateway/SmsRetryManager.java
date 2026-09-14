@@ -78,9 +78,61 @@ public class SmsRetryManager {
         });
     }
 
-    private static void resendSingleRecord(Context context, DatabaseHelper dbHelper, DatabaseHelper.SmsRecord record, String host, int port) {
+    public static void retrySingleSms(Context context, long smsId, Runnable callback) {
+        if (context == null) return;
+        executor.execute(() -> {
+            try {
+                DatabaseHelper dbHelper = DatabaseHelper.getInstance(context);
+                DatabaseHelper.SmsRecord record = dbHelper.getSmsById(smsId);
+                if (record != null) {
+                    String traccarHost = PreferenceManager.getTraccarHost(context);
+                    int traccarPort = PreferenceManager.getTraccarPort(context);
+                    resendSingleRecord(context, dbHelper, record, traccarHost, traccarPort);
+                }
+            } catch (Exception e) {
+                AppLogger.e(TAG, "Error retrying single SMS: " + e.getMessage(), e);
+            } finally {
+                if (callback != null) {
+                    callback.run();
+                }
+            }
+        });
+    }
+
+    public static void retryFailedMessages(Context context, int limit, Runnable callback) {
+        if (context == null) return;
+        executor.execute(() -> {
+            try {
+                DatabaseHelper dbHelper = DatabaseHelper.getInstance(context);
+                List<DatabaseHelper.SmsRecord> failedRecords = dbHelper.getLastFailedSms(limit);
+
+                if (failedRecords.isEmpty()) {
+                    AppLogger.d(TAG, "No failed SMS found to retry.");
+                    return;
+                }
+
+                AppLogger.i(TAG, "Found " + failedRecords.size() + " failed SMS messages to retry.");
+                String traccarHost = PreferenceManager.getTraccarHost(context);
+                int traccarPort = PreferenceManager.getTraccarPort(context);
+
+                for (DatabaseHelper.SmsRecord record : failedRecords) {
+                    resendSingleRecord(context, dbHelper, record, traccarHost, traccarPort);
+                }
+            } catch (Exception e) {
+                AppLogger.e(TAG, "Error retrying failed messages: " + e.getMessage(), e);
+            } finally {
+                if (callback != null) {
+                    callback.run();
+                }
+            }
+        });
+    }
+
+    public static boolean resendSingleRecord(Context context, DatabaseHelper dbHelper, DatabaseHelper.SmsRecord record, String host, int port) {
         long smsId = record.getId();
-        AppLogger.i(TAG, "Retrying SMS ID: " + smsId + " (Attempt #" + (record.getRetryCount() + 1) + ")");
+        int currentRetryCount = record.getRetryCount();
+        int maxRetries = PreferenceManager.getMaxRetryCount(context);
+        AppLogger.i(TAG, "Retrying SMS ID: " + smsId + " (Attempt #" + (currentRetryCount + 1) + ", Max: " + maxRetries + ")");
 
         try {
             if (record.isBinary()) {
@@ -96,26 +148,45 @@ public class SmsRetryManager {
                         imei = PreferenceManager.getDeviceId(context, record.getSender());
                     }
 
+                    String payloadSummary = "CodecId: " + parseResult.getCodecId() +
+                            ", Elements: " + parseResult.getElementCount() +
+                            ", BaseTimeMillis: " + parseResult.getBaseTimestampMillis();
+
+                    dbHelper.updateSmsParseResult(smsId, "SUCCESS", imei, payloadSummary, null);
+
                     byte[] avlTcpPacket = TeltonikaAvlConverter.convertToCodec8TcpPacket(parseResult);
                     TraccarTCPClient.getInstance().sendTeltonikaAvlData(host, port, imei, avlTcpPacket);
                     dbHelper.updateSmsSendResult(smsId, "SENT", null, false);
                     AppLogger.i(TAG, "Successfully resent Teltonika AVL SMS ID: " + smsId);
+                    return true;
                 } else {
+                    String errorMsg = parseResult.getError() != null ? parseResult.getError() : "Failed to parse binary SMS";
+                    String fallbackImei = PreferenceManager.getDeviceId(context, record.getSender());
+                    dbHelper.updateSmsParseResult(smsId, "FAILED", fallbackImei, null, errorMsg);
+
                     // Raw binary forwarding fallback
                     TraccarTCPClient.getInstance().sendMessage(host, port, rawBytes);
                     dbHelper.updateSmsSendResult(smsId, "SENT", null, false);
                     AppLogger.i(TAG, "Successfully resent raw binary SMS ID: " + smsId);
+                    return true;
                 }
             } else {
                 // Text SMS forwarding
+                String mappedImei = PreferenceManager.getDeviceId(context, record.getSender());
+                dbHelper.updateSmsParseResult(smsId, "SUCCESS", mappedImei, record.getRawData(), null);
+
                 TraccarTCPClient.getInstance().sendMessage(host, port, record.getRawData());
                 dbHelper.updateSmsSendResult(smsId, "SENT", null, false);
                 AppLogger.i(TAG, "Successfully resent text SMS ID: " + smsId);
+                return true;
             }
         } catch (Exception e) {
             String errMsg = "Retry failed: " + e.getMessage();
-            dbHelper.updateSmsSendResult(smsId, "FAILED", errMsg, true);
-            AppLogger.e(TAG, "Failed retry attempt for SMS ID: " + smsId + " - " + e.getMessage());
+            int newRetryCount = currentRetryCount + 1;
+            String newStatus = (newRetryCount >= maxRetries) ? "FAILED" : "PENDING";
+            dbHelper.updateSmsSendResult(smsId, newStatus, errMsg, true);
+            AppLogger.e(TAG, "Failed retry attempt for SMS ID: " + smsId + " - " + e.getMessage() + " (Status: " + newStatus + ")");
+            return false;
         }
     }
 

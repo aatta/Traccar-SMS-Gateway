@@ -27,6 +27,20 @@ public class PreferenceManagerTest {
     }
 
     @Test
+    public void testMaxRetryCountPreference() {
+        // Default max retry count should be 2
+        assertEquals(2, PreferenceManager.getMaxRetryCount(fakeContext));
+
+        // Set custom max retry count
+        PreferenceManager.setMaxRetryCount(fakeContext, 5);
+        assertEquals(5, PreferenceManager.getMaxRetryCount(fakeContext));
+
+        // Setting a negative value should be clamped to at least 0
+        PreferenceManager.setMaxRetryCount(fakeContext, -1);
+        assertEquals(0, PreferenceManager.getMaxRetryCount(fakeContext));
+    }
+
+    @Test
     public void testCleanPhoneNumber() {
         assertEquals("12345678900", PreferenceManager.cleanPhoneNumber("+1 (234) 567-8900"));
         assertEquals("923001234567", PreferenceManager.cleanPhoneNumber("+92-300-1234567"));

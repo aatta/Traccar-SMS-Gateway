@@ -232,6 +232,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return list;
     }
 
+    public List<SmsRecord> getLastFailedSms(int limit) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        List<SmsRecord> list = new ArrayList<>();
+        String selection = COL_SMS_SEND_STATUS + " = ? OR " + COL_SMS_PARSE_STATUS + " = ?";
+        String[] selectionArgs = new String[]{"FAILED", "FAILED"};
+        String orderBy = COL_SMS_CREATED_AT + " DESC";
+        String limitStr = limit > 0 ? String.valueOf(limit) : null;
+        Cursor cursor = db.query(TABLE_SMS, null, selection, selectionArgs, null, null, orderBy, limitStr);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                list.add(cursorToSmsRecord(cursor));
+            }
+            cursor.close();
+        }
+        return list;
+    }
+
     public List<SmsRecord> querySms(String imei, Long startTimestamp, Long endTimestamp,
                                     String sendStatus, String parseStatus,
                                     boolean sortAscending, int limit, int offset) {

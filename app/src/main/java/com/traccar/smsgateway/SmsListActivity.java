@@ -32,6 +32,7 @@ public class SmsListActivity extends AppCompatActivity {
     private Button buttonEndDate;
     private Button buttonApplyFilters;
     private Button buttonResetFilters;
+    private Button buttonRetryFailed100;
     private Button buttonBack;
 
     private LinearLayout containerTableRows;
@@ -72,6 +73,7 @@ public class SmsListActivity extends AppCompatActivity {
         buttonEndDate = findViewById(R.id.buttonEndDate);
         buttonApplyFilters = findViewById(R.id.buttonApplyFilters);
         buttonResetFilters = findViewById(R.id.buttonResetFilters);
+        buttonRetryFailed100 = findViewById(R.id.buttonRetryFailed100);
         buttonBack = findViewById(R.id.buttonBack);
 
         containerTableRows = findViewById(R.id.containerTableRows);
@@ -99,6 +101,11 @@ public class SmsListActivity extends AppCompatActivity {
 
     private void setupListeners() {
         buttonBack.setOnClickListener(v -> finish());
+
+        buttonRetryFailed100.setOnClickListener(v -> {
+            Toast.makeText(this, "Retrying last 100 failed messages...", Toast.LENGTH_SHORT).show();
+            SmsRetryManager.retryFailedMessages(this, 100, () -> runOnUiThread(this::loadSmsData));
+        });
 
         buttonStartDate.setOnClickListener(v -> showDatePicker(true));
         buttonEndDate.setOnClickListener(v -> showDatePicker(false));
@@ -192,6 +199,7 @@ public class SmsListActivity extends AppCompatActivity {
             TextView textRowSender = rowView.findViewById(R.id.textRowSender);
             TextView textRowParseStatus = rowView.findViewById(R.id.textRowParseStatus);
             TextView textRowSendStatus = rowView.findViewById(R.id.textRowSendStatus);
+            Button buttonRowRetry = rowView.findViewById(R.id.buttonRowRetry);
             Button buttonRowView = rowView.findViewById(R.id.buttonRowView);
 
             textRowId.setText(String.valueOf(record.getId()));
@@ -217,6 +225,11 @@ public class SmsListActivity extends AppCompatActivity {
             } else {
                 textRowSendStatus.setTextColor(Color.parseColor("#EF6C00"));
             }
+
+            buttonRowRetry.setOnClickListener(v -> {
+                Toast.makeText(this, "Retrying SMS #" + record.getId() + "...", Toast.LENGTH_SHORT).show();
+                SmsRetryManager.retrySingleSms(this, record.getId(), () -> runOnUiThread(this::loadSmsData));
+            });
 
             buttonRowView.setOnClickListener(v -> showSmsDetailDialog(record));
 

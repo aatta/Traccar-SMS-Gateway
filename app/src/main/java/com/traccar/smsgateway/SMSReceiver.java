@@ -108,7 +108,11 @@ public class SMSReceiver extends BroadcastReceiver {
                 AppLogger.i(TAG, "Teltonika AVL packet sent successfully to Traccar for SMS ID: " + smsId + " (IMEI: " + targetImei + ")");
             } catch (Exception e) {
                 String errMsg = "Error sending Teltonika AVL packet: " + e.getMessage();
-                dbHelper.updateSmsSendResult(smsId, "FAILED", errMsg, true);
+                int maxRetries = PreferenceManager.getMaxRetryCount(context);
+                DatabaseHelper.SmsRecord rec = dbHelper.getSmsById(smsId);
+                int newRetryCount = (rec != null ? rec.getRetryCount() : 0) + 1;
+                String sendStatus = (newRetryCount >= maxRetries) ? "FAILED" : "PENDING";
+                dbHelper.updateSmsSendResult(smsId, sendStatus, errMsg, true);
                 AppLogger.e(TAG, "SMS ID " + smsId + " send error: " + e.getMessage(), e);
             }
         }).start();
@@ -130,7 +134,11 @@ public class SMSReceiver extends BroadcastReceiver {
                 AppLogger.i(TAG, "SMS ID " + smsId + " forwarded successfully to Traccar (" + traccarHost + ":" + traccarPort + ")");
             } catch (Exception e) {
                 String errMsg = "Error forwarding raw SMS: " + e.getMessage();
-                dbHelper.updateSmsSendResult(smsId, "FAILED", errMsg, true);
+                int maxRetries = PreferenceManager.getMaxRetryCount(context);
+                DatabaseHelper.SmsRecord rec = dbHelper.getSmsById(smsId);
+                int newRetryCount = (rec != null ? rec.getRetryCount() : 0) + 1;
+                String sendStatus = (newRetryCount >= maxRetries) ? "FAILED" : "PENDING";
+                dbHelper.updateSmsSendResult(smsId, sendStatus, errMsg, true);
                 AppLogger.e(TAG, "SMS ID " + smsId + " send error: " + e.getMessage(), e);
             }
         }).start();

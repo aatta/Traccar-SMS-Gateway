@@ -42,6 +42,7 @@ public class PreferenceManager {
     private static final String KEY_AUTO_START = "auto_start";
     private static final String KEY_LOG_ENABLED = "log_enabled";
     private static final String KEY_BINARY_SMS = "binary_sms";
+    private static final String KEY_MAX_RETRY_COUNT = "max_retry_count";
 
     private static SharedPreferences getPreferences(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -87,6 +88,22 @@ public class PreferenceManager {
      */
     public static int getTraccarPort(Context context) {
         return getPreferences(context).getInt(KEY_TRACCAR_PORT, 5078);
+    }
+
+    /**
+     * Save max retry count before marking message as failed
+     */
+    public static void setMaxRetryCount(Context context, int count) {
+        SharedPreferences.Editor editor = getPreferences(context).edit();
+        editor.putInt(KEY_MAX_RETRY_COUNT, Math.max(0, count));
+        editor.apply();
+    }
+
+    /**
+     * Get max retry count (default: 2)
+     */
+    public static int getMaxRetryCount(Context context) {
+        return getPreferences(context).getInt(KEY_MAX_RETRY_COUNT, 2);
     }
 
     /**

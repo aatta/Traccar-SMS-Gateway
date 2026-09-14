@@ -180,7 +180,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="8dp">
 
             <Button
                 android:id="@+id/buttonViewSmsList"
@@ -198,6 +198,14 @@
                 android:text="System Logs"
                 android:layout_marginStart="4dp" />
         </LinearLayout>
+
+        <!-- Database Export Button -->
+        <Button
+            android:id="@+id/buttonExportDb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Export Database"
+            android:layout_marginBottom="16dp" />
 
         <!-- Status -->
         <TextView

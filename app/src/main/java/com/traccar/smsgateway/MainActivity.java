@@ -37,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private Button buttonTest;
     private Button buttonViewSmsList;
     private Button buttonViewLogs;
+    private Button buttonExportDb;
     private TextView textStatus;
     private TextView textInfo;
 
@@ -67,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
         buttonTest = findViewById(R.id.buttonTest);
         buttonViewSmsList = findViewById(R.id.buttonViewSmsList);
         buttonViewLogs = findViewById(R.id.buttonViewLogs);
+        buttonExportDb = findViewById(R.id.buttonExportDb);
         textStatus = findViewById(R.id.textStatus);
         textInfo = findViewById(R.id.textInfo);
     }
@@ -186,6 +188,7 @@ public class MainActivity extends AppCompatActivity {
         buttonTest.setOnClickListener(v -> testConnection());
         buttonViewSmsList.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SmsListActivity.class)));
         buttonViewLogs.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, LogViewerActivity.class)));
+        buttonExportDb.setOnClickListener(v -> DatabaseExporter.exportAndShareDatabase(MainActivity.this));
         buttonAddDevice.setOnClickListener(v -> showAddEditDeviceDialog(null));
     }
 

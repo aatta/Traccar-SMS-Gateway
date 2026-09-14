@@ -49,19 +49,122 @@ public class TeltonikaAvlConverter {
         return crc & 0xFFFF;
     }
 
+    /** Default maximum realistic speed in km/h for coordinate jump validation */
+    public static final double DEFAULT_MAX_SPEED_KMH = 150.0;
+
     /**
      * Convert parsed Teltonika SMS result into a complete Teltonika Codec 8 TCP AVL Data Packet.
+     * Automatically filters invalid elements, sorts chronologically, deduplicates, and filters out impossible jumps.
      */
     public static byte[] convertToCodec8TcpPacket(TeltonikaSmsParser.SmsParseResult result) throws IOException {
-        List<TeltonikaSmsParser.GpsElement> validElements = new ArrayList<>();
+        return convertToCodec8TcpPacket(result, DEFAULT_MAX_SPEED_KMH, true);
+    }
+
+    /**
+     * Convert parsed Teltonika SMS result into a complete Teltonika Codec 8 TCP AVL Data Packet.
+     *
+     * @param result Teltonika SMS parse result
+     * @param maxSpeedKmh Max realistic speed for jump validation in km/h
+     * @param filterImpossibleJumps If true, elements causing impossible speed/distance jumps will be excluded
+     */
+    public static byte[] convertToCodec8TcpPacket(TeltonikaSmsParser.SmsParseResult result, double maxSpeedKmh, boolean filterImpossibleJumps) throws IOException {
+        List<TeltonikaSmsParser.GpsElement> elements = new ArrayList<>();
         if (result != null && result.getElements() != null) {
-            for (TeltonikaSmsParser.GpsElement elem : result.getElements()) {
-                if (elem.isValid()) {
+            elements = result.getElements();
+        }
+        List<TeltonikaSmsParser.GpsElement> processed = processAndFilterElements(elements, maxSpeedKmh, filterImpossibleJumps);
+        return buildCodec8TcpPacket(processed);
+    }
+
+    /**
+     * Filter invalid elements, sort chronologically by timestamp, deduplicate by timestamp,
+     * and optionally filter out impossible jumps.
+     */
+    public static List<TeltonikaSmsParser.GpsElement> processAndFilterElements(
+            List<TeltonikaSmsParser.GpsElement> rawElements, double maxSpeedKmh, boolean filterImpossibleJumps) {
+
+        List<TeltonikaSmsParser.GpsElement> validElements = new ArrayList<>();
+        if (rawElements != null) {
+            for (TeltonikaSmsParser.GpsElement elem : rawElements) {
+                if (elem != null && elem.isValid()) {
                     validElements.add(elem);
                 }
             }
         }
-        return buildCodec8TcpPacket(validElements);
+
+        if (validElements.isEmpty()) {
+            return validElements;
+        }
+
+        // 1. Sort chronologically by timestamp
+        validElements.sort((e1, e2) -> Long.compare(e1.getTimestampMillis(), e2.getTimestampMillis()));
+
+        // 2. Deduplicate by timestamp
+        List<TeltonikaSmsParser.GpsElement> deduplicated = new ArrayList<>();
+        long lastTimestamp = Long.MIN_VALUE;
+        for (TeltonikaSmsParser.GpsElement elem : validElements) {
+            if (elem.getTimestampMillis() != lastTimestamp) {
+                deduplicated.add(elem);
+                lastTimestamp = elem.getTimestampMillis();
+            }
+        }
+
+        if (!filterImpossibleJumps || deduplicated.size() <= 1) {
+            return deduplicated;
+        }
+
+        // 3. Validate coordinate jumps
+        List<TeltonikaSmsParser.GpsElement> filtered = new ArrayList<>();
+        TeltonikaSmsParser.GpsElement prev = deduplicated.get(0);
+        filtered.add(prev);
+
+        for (int i = 1; i < deduplicated.size(); i++) {
+            TeltonikaSmsParser.GpsElement curr = deduplicated.get(i);
+            if (isValidJump(prev, curr, maxSpeedKmh)) {
+                filtered.add(curr);
+                prev = curr;
+            } else {
+                AppLogger.w("TeltonikaAvlConverter", "Skipping impossible jump from timestamp " +
+                        prev.getTimestampMillis() + " (" + prev.getLatitudeDeg() + ", " + prev.getLongitudeDeg() +
+                        ") to " + curr.getTimestampMillis() + " (" + curr.getLatitudeDeg() + ", " + curr.getLongitudeDeg() + ")");
+            }
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Checks if movement between two positions is physically realistic within maximum speed limit.
+     */
+    public static boolean isValidJump(TeltonikaSmsParser.GpsElement prev, TeltonikaSmsParser.GpsElement curr, double maxSpeedKmh) {
+        if (prev == null || curr == null) {
+            return true;
+        }
+        long timeDiffMs = curr.getTimestampMillis() - prev.getTimestampMillis();
+        if (timeDiffMs <= 0) {
+            return true;
+        }
+        double timeDiffHours = timeDiffMs / 3600000.0;
+        double distanceMeters = calculateHaversineDistanceMeters(
+                prev.getLatitudeDeg(), prev.getLongitudeDeg(),
+                curr.getLatitudeDeg(), curr.getLongitudeDeg()
+        );
+        double maxAllowedDistanceMeters = maxSpeedKmh * 1000.0 * timeDiffHours;
+        return distanceMeters <= maxAllowedDistanceMeters;
+    }
+
+    /**
+     * Calculate Haversine distance in meters between two lat/lon coordinates.
+     */
+    public static double calculateHaversineDistanceMeters(double lat1, double lon1, double lat2, double lon2) {
+        double earthRadiusMeters = 6371000.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2.0) * Math.sin(dLat / 2.0) +
+                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                   Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0);
+        double c = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
+        return earthRadiusMeters * c;
     }
 
     /**

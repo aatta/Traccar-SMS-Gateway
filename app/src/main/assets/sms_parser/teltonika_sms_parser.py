@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
-Parser for Teltonika FM2200 24-hour Position SMS Data Protocol
-Decodes compressed GPS data from SMS messages
+Enhanced Teltonika FM2200 24-hour Position SMS Parser
+Handles out-of-order delivery, deduplication, and validation
 """
+
+from datetime import datetime, timedelta, timezone
+import json
+import math
+import struct
 
 class BitStream:
     """Helper class to read bits from a byte stream"""
@@ -55,16 +60,14 @@ def parse_teltonika_sms(hex_string):
         return parse_codec8_sms(data, result)
 
     if codec_id != 4:
-        result['error'] = f'Invalid CodecId: {codec_id}. Expected 4 or 8 for Teltonika SMS.'
+        result['error'] = f'Invalid CodecId: {codec_id}. Expected 4 for 24-hour SMS.'
         return result
 
     # Parse Timestamp (35 bits)
-    # Time in seconds elapsed from 2000.01.01 00:00 EET
     timestamp_seconds = stream.read_bits(35)
     result['timestamp_seconds'] = timestamp_seconds
 
-    # Convert to readable date
-    from datetime import datetime, timedelta
+    # Convert to readable date (2000-01-01 EET)
     base_time = datetime(2000, 1, 1, 0, 0, 0)
     element_time = base_time + timedelta(seconds=timestamp_seconds)
     result['timestamp'] = element_time.isoformat()
@@ -81,7 +84,7 @@ def parse_teltonika_sms(hex_string):
     for i in range(element_count):
         element = {}
         element['index'] = i
-        element['time_offset_hours'] = i  # Each element is 1 hour apart
+        element['time_offset_hours'] = i
 
         # ValidElement (1 bit)
         valid = stream.read_bits(1)
@@ -97,15 +100,12 @@ def parse_teltonika_sms(hex_string):
         element['differential_coords'] = bool(differential)
 
         if differential:
-            # Read differential coordinates (14 bits each)
             lon_diff = stream.read_bits(14)
             lat_diff = stream.read_bits(14)
 
             element['longitude_diff'] = lon_diff
             element['latitude_diff'] = lat_diff
 
-            # Decode: Longitude = prevLongitude - LongitudeDiff + 2^13 - 1
-            #         Latitude = prevLatitude - LatitudeDiff + 2^13 - 1
             OFFSET = (2 ** 13) - 1
             longitude = prev_longitude - lon_diff + OFFSET
             latitude = prev_latitude - lat_diff + OFFSET
@@ -113,7 +113,6 @@ def parse_teltonika_sms(hex_string):
             element['longitude_raw'] = longitude
             element['latitude_raw'] = latitude
         else:
-            # Read absolute coordinates
             longitude = stream.read_bits(21)
             latitude = stream.read_bits(20)
 
@@ -125,8 +124,6 @@ def parse_teltonika_sms(hex_string):
         element['speed_kmh'] = speed
 
         # Convert raw coordinates to degrees
-        # LongDeg = Longitude * 360 / (2^21 - 1) - 180
-        # LatDeg = Latitude * 180 / (2^20 - 1) - 90
         lon_deg = (longitude * 360.0) / (2**21 - 1) - 180.0
         lat_deg = (latitude * 180.0) / (2**20 - 1) - 90.0
 
@@ -134,8 +131,9 @@ def parse_teltonika_sms(hex_string):
         element['latitude_deg'] = round(lat_deg, 8)
 
         # Calculate actual timestamp for this element
-        element_time_obj = element_time + timedelta(hours=i)
+        element_time_obj = element_time - timedelta(hours=(element_count - 1 - i))
         element['timestamp'] = element_time_obj.isoformat()
+        element['timestamp_datetime'] = element_time_obj
 
         result['entries'].append(element)
 
@@ -143,11 +141,8 @@ def parse_teltonika_sms(hex_string):
         prev_longitude = longitude
         prev_latitude = latitude
 
-    # Align to byte boundary for IMEI
-    stream.align_to_byte()
-
     # Parse IMEI (64 bits = 8 bytes)
-    # IMEI is stored as big-endian 64-bit integer
+    stream.align_to_byte()
     byte_idx = stream.bit_pos // 8
     imei_bytes = data[byte_idx:byte_idx+8]
     imei = int.from_bytes(imei_bytes, byteorder='big')
@@ -159,9 +154,6 @@ def parse_teltonika_sms(hex_string):
 
 
 def parse_codec8_sms(data, result):
-    import struct
-    from datetime import datetime, timezone
-
     if len(data) < 2:
         result['error'] = 'Data too short for Codec 8 header'
         return result
@@ -215,6 +207,7 @@ def parse_codec8_sms(data, result):
             'index': i,
             'valid': True,
             'timestamp': elem_time.isoformat(),
+            'timestamp_datetime': elem_time,
             'latitude_deg': round(lat_deg, 8),
             'longitude_deg': round(lon_deg, 8),
             'speed_kmh': speed,
@@ -240,67 +233,176 @@ def parse_codec8_sms(data, result):
     return result
 
 
-def print_results(parsed_data):
-    """Pretty print parsed results"""
-    if 'error' in parsed_data:
-        print(f"❌ Error: {parsed_data['error']}")
-        return
+def filter_and_sort_positions(parsed_data):
+    """
+    Filter invalid entries and sort by timestamp
 
-    print(f"✓ Teltonika FM2200 24-Hour Position SMS Parser")
+    Returns list of valid entries sorted chronologically
+    """
+    valid_entries = [e for e in parsed_data['entries'] if e.get('valid')]
+    valid_entries.sort(key=lambda x: x['timestamp_datetime'])
+    return valid_entries
+
+
+def deduplicate_positions(position_list, imei):
+    """
+    Remove duplicate positions based on (IMEI, timestamp) pairs
+    """
+    seen = set()
+    unique_positions = []
+
+    for pos in position_list:
+        position_key = (imei, pos['timestamp'])
+        if position_key not in seen:
+            seen.add(position_key)
+            unique_positions.append(pos)
+        else:
+            print(f"DEBUG: Skipping duplicate at {pos['timestamp']}")
+
+    return unique_positions
+
+
+def validate_position_jump(prev_pos, curr_pos, max_speed_kmh=150):
+    """
+    Check if the jump between two positions is physically reasonable
+
+    Returns: (is_valid, distance_m, implied_speed_kmh)
+    """
+    if not prev_pos:
+        return True, 0, 0
+
+    time_diff = (curr_pos['timestamp_datetime'] - prev_pos['timestamp_datetime']).total_seconds() / 3600
+
+    if time_diff <= 0:
+        return True, 0, 0
+
+    # Calculate distance using Haversine formula
+    lat1, lon1 = math.radians(prev_pos['latitude_deg']), math.radians(prev_pos['longitude_deg'])
+    lat2, lon2 = math.radians(curr_pos['latitude_deg']), math.radians(curr_pos['longitude_deg'])
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    a = math.sin(dlat / 2.0)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2.0)**2
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    distance_m = 6371000.0 * c
+
+    max_distance_m = max_speed_kmh * 1000 * time_diff
+    implied_speed = (distance_m / 1000) / time_diff if time_diff > 0 else 0
+
+    is_valid = distance_m <= max_distance_m
+
+    return is_valid, distance_m, implied_speed
+
+
+def validate_all_positions(position_list, max_speed_kmh=150, print_warnings=True):
+    """
+    Validate all positions in sequence, flag impossible jumps
+    """
+    invalid_indices = []
+
+    for i in range(1, len(position_list)):
+        prev = position_list[i-1]
+        curr = position_list[i]
+
+        is_valid, distance_m, implied_speed = validate_position_jump(prev, curr, max_speed_kmh)
+
+        if not is_valid:
+            invalid_indices.append(i)
+            if print_warnings:
+                print(f"\n⚠️  WARNING: Impossible jump at index {i}")
+                print(f"   From: {prev['timestamp']}")
+                print(f"         ({prev['latitude_deg']:.6f}°N, {prev['longitude_deg']:.6f}°E)")
+                print(f"   To:   {curr['timestamp']}")
+                print(f"         ({curr['latitude_deg']:.6f}°N, {curr['longitude_deg']:.6f}°E)")
+                print(f"   Distance: {distance_m:.0f}m in {(curr['timestamp_datetime'] - prev['timestamp_datetime']).total_seconds()/3600:.1f}h")
+                print(f"   Implied speed: {implied_speed:.1f} km/h (max allowed: {max_speed_kmh} km/h)")
+        else:
+            if print_warnings and implied_speed > 0:
+                print(f"  [{i}] {curr['timestamp']}: {distance_m:.0f}m, {implied_speed:.1f} km/h ✓")
+
+    return invalid_indices
+
+
+def save_decoded_positions(parsed_data, position_list, filename=None):
+    """
+    Save decoded positions to JSON file for inspection
+    """
+    if not filename:
+        filename = f"decoded_positions_{parsed_data['imei']}.json"
+
+    output = {
+        'imei': parsed_data['imei'],
+        'base_timestamp': parsed_data['timestamp'],
+        'total_entries': len(parsed_data['entries']),
+        'valid_entries': len(position_list),
+        'positions': [
+            {
+                'index': i,
+                'timestamp': pos['timestamp'],
+                'latitude': pos['latitude_deg'],
+                'longitude': pos['longitude_deg'],
+                'speed_kmh': pos['speed_kmh'],
+                'differential': pos.get('differential_coords', False)
+            }
+            for i, pos in enumerate(position_list)
+        ]
+    }
+
+    with open(filename, 'w') as f:
+        json.dump(output, f, indent=2, default=str)
+
+    print(f"\n✓ Decoded positions saved to: {filename}")
+    return filename
+
+
+def process_sms(hex_string, save_json=True, validate=True):
+    """
+    Complete SMS processing pipeline with all fixes
+
+    Returns: processed position list ready to send to Traccar
+    """
+    print(f"\n{'='*70}")
+    print(f"Processing SMS: {hex_string[:40]}...")
     print(f"{'='*70}")
-    print(f"CodecId: {parsed_data['codec_id']}")
-    print(f"Timestamp: {parsed_data['timestamp_utc']}")
-    print(f"Element Count: {parsed_data['element_count']}")
-    print(f"IMEI: {parsed_data['imei']}")
+
+    parsed = parse_teltonika_sms(hex_string)
+
+    if 'error' in parsed:
+        print(f"❌ ERROR: {parsed['error']}")
+        return None
+
+    print(f"✓ Parsed successfully")
+    print(f"  IMEI: {parsed['imei']}")
+    print(f"  Base timestamp: {parsed['timestamp_utc']}")
+    print(f"  Total entries: {parsed['element_count']}")
+
+    valid_positions = filter_and_sort_positions(parsed)
+    print(f"✓ Filtered and sorted")
+    print(f"  Valid entries: {len(valid_positions)}/{parsed['element_count']}")
+
+    unique_positions = deduplicate_positions(valid_positions, parsed['imei'])
+    if len(unique_positions) < len(valid_positions):
+        print(f"✓ Removed {len(valid_positions) - len(unique_positions)} duplicates")
+    else:
+        print(f"✓ No duplicates found")
+
+    if validate:
+        print(f"\n✓ Validating position sequence:")
+        invalid_idx = validate_all_positions(unique_positions, print_warnings=True)
+        if invalid_idx:
+            print(f"\n⚠️  Found {len(invalid_idx)} positions with impossible jumps")
+
+    if save_json:
+        save_decoded_positions(parsed, unique_positions)
+
+    print(f"\n{'='*70}")
+    print(f"READY TO SEND: {len(unique_positions)} positions to Traccar")
     print(f"{'='*70}\n")
 
-    print(f"GPS Data Entries:")
-    print(f"{'-'*70}")
-
-    for entry in parsed_data['entries']:
-        print(f"\nEntry #{entry['index']}")
-        if not entry['valid']:
-            print(f"  Status: Invalid/Empty")
-        else:
-            print(f"  Time: {entry['timestamp']} (+{entry['time_offset_hours']}h from base)")
-            print(f"  Location: {entry['latitude_deg']:.8f}°N, {entry['longitude_deg']:.8f}°E")
-            print(f"  Speed: {entry['speed_kmh']} km/h")
-            if entry['differential_coords']:
-                print(f"  Encoding: Differential")
-            else:
-                print(f"  Encoding: Absolute")
+    return {
+        'imei': parsed['imei'],
+        'positions': unique_positions
+    }
 
 
 if __name__ == '__main__':
-    # Test with provided data
     sms_hex = "04C0743932C00000804CEC6B018E0200000140E9D530E7A8"
-
-    print(f"Parsing SMS: {sms_hex}\n")
-    parsed = parse_teltonika_sms(sms_hex)
-    print_results(parsed)
-
-    # Also print detailed JSON-like output
-    print(f"\n{'='*70}")
-    print(f"Detailed Raw Data:")
-    print(f"{'='*70}")
-    import json
-    # Convert to JSON-serializable format
-    output = {
-        'codec_id': parsed['codec_id'],
-        'timestamp': parsed['timestamp'],
-        'element_count': parsed['element_count'],
-        'imei': parsed['imei'],
-        'entries': [
-            {
-                'index': e['index'],
-                'valid': e['valid'],
-                'timestamp': e.get('timestamp', 'N/A'),
-                'latitude_deg': e.get('latitude_deg', None),
-                'longitude_deg': e.get('longitude_deg', None),
-                'speed_kmh': e.get('speed_kmh', None),
-                'differential': e.get('differential_coords', None)
-            }
-            for e in parsed['entries']
-        ]
-    }
-    print(json.dumps(output, indent=2))
+    result = process_sms(sms_hex, save_json=False, validate=True)

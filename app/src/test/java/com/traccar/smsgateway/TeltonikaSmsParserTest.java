@@ -99,4 +99,48 @@ public class TeltonikaSmsParserTest {
         assertFalse(result.isSuccess());
         assertNotNull(result.getError());
     }
+
+    @Test
+    public void testProcessAndFilterElementsSortingAndDeduplication() {
+        long now = System.currentTimeMillis();
+        long t1 = now - 7200000L; // -2 hours
+        long t2 = now - 3600000L; // -1 hour
+        long t3 = now;            // current
+
+        // Create elements out of order with duplicates and invalid elements
+        TeltonikaSmsParser.GpsElement elemInvalid = new TeltonikaSmsParser.GpsElement(0, false, false, 0, 0, 0, 0, 0, t1 - 1000);
+        TeltonikaSmsParser.GpsElement elemT2 = new TeltonikaSmsParser.GpsElement(1, true, false, 0, 0, 24.96, 67.06, 30, t2);
+        TeltonikaSmsParser.GpsElement elemT1 = new TeltonikaSmsParser.GpsElement(2, true, false, 0, 0, 24.95, 67.05, 20, t1);
+        TeltonikaSmsParser.GpsElement elemT2Dup = new TeltonikaSmsParser.GpsElement(3, true, false, 0, 0, 24.96, 67.06, 30, t2);
+        TeltonikaSmsParser.GpsElement elemT3 = new TeltonikaSmsParser.GpsElement(4, true, false, 0, 0, 24.97, 67.07, 40, t3);
+
+        java.util.List<TeltonikaSmsParser.GpsElement> rawList = java.util.Arrays.asList(
+                elemInvalid, elemT2, elemT1, elemT2Dup, elemT3
+        );
+
+        java.util.List<TeltonikaSmsParser.GpsElement> processed = TeltonikaAvlConverter.processAndFilterElements(rawList, 150.0, true);
+
+        assertEquals(3, processed.size());
+        assertEquals(t1, processed.get(0).getTimestampMillis());
+        assertEquals(t2, processed.get(1).getTimestampMillis());
+        assertEquals(t3, processed.get(2).getTimestampMillis());
+    }
+
+    @Test
+    public void testProcessAndFilterElementsImpossibleJump() {
+        long now = System.currentTimeMillis();
+        long t1 = now - 3600000L; // 1 hour ago
+        long t2 = now;            // now
+
+        // Distance between (0, 0) and (10, 10) is ~1500 km, impossible in 1 hour at 150 km/h max speed
+        TeltonikaSmsParser.GpsElement elem1 = new TeltonikaSmsParser.GpsElement(0, true, false, 0, 0, 0.0, 0.0, 50, t1);
+        TeltonikaSmsParser.GpsElement elem2Jump = new TeltonikaSmsParser.GpsElement(1, true, false, 0, 0, 10.0, 10.0, 50, t2);
+
+        java.util.List<TeltonikaSmsParser.GpsElement> rawList = java.util.Arrays.asList(elem1, elem2Jump);
+
+        java.util.List<TeltonikaSmsParser.GpsElement> filtered = TeltonikaAvlConverter.processAndFilterElements(rawList, 150.0, true);
+
+        assertEquals(1, filtered.size());
+        assertEquals(t1, filtered.get(0).getTimestampMillis());
+    }
 }

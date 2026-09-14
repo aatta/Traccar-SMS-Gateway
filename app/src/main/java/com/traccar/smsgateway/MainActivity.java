@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText editTraccarHost;
     private EditText editTraccarPort;
+    private EditText editMaxRetryCount;
     private Switch switchEnabled;
     private Switch switchAutoStart;
     private Button buttonAddDevice;
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private void initializeViews() {
         editTraccarHost = findViewById(R.id.editTraccarHost);
         editTraccarPort = findViewById(R.id.editTraccarPort);
+        editMaxRetryCount = findViewById(R.id.editMaxRetryCount);
         switchEnabled = findViewById(R.id.switchEnabled);
         switchAutoStart = findViewById(R.id.switchAutoStart);
         buttonAddDevice = findViewById(R.id.buttonAddDevice);
@@ -72,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private void loadConfiguration() {
         editTraccarHost.setText(PreferenceManager.getTraccarHost(this));
         editTraccarPort.setText(String.valueOf(PreferenceManager.getTraccarPort(this)));
+        editMaxRetryCount.setText(String.valueOf(PreferenceManager.getMaxRetryCount(this)));
         switchEnabled.setChecked(PreferenceManager.isEnabled(this));
         switchAutoStart.setChecked(PreferenceManager.isAutoStartEnabled(this));
         refreshDeviceMappingsList();
@@ -190,22 +193,25 @@ public class MainActivity extends AppCompatActivity {
         try {
             String host = editTraccarHost.getText().toString().trim();
             String portStr = editTraccarPort.getText().toString().trim();
+            String maxRetryStr = editMaxRetryCount.getText().toString().trim();
             boolean enabled = switchEnabled.isChecked();
             boolean autoStart = switchAutoStart.isChecked();
 
-            if (host.isEmpty() || portStr.isEmpty()) {
-                Toast.makeText(this, "Please fill in all server fields", Toast.LENGTH_SHORT).show();
+            if (host.isEmpty() || portStr.isEmpty() || maxRetryStr.isEmpty()) {
+                Toast.makeText(this, "Please fill in all server and retry fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             int port = Integer.parseInt(portStr);
+            int maxRetries = Integer.parseInt(maxRetryStr);
 
             PreferenceManager.setTraccarHost(this, host);
             PreferenceManager.setTraccarPort(this, port);
+            PreferenceManager.setMaxRetryCount(this, maxRetries);
             PreferenceManager.setEnabled(this, enabled);
             PreferenceManager.setAutoStart(this, autoStart);
 
-            AppLogger.i(TAG, "Configuration saved: host=" + host + ", port=" + port + ", enabled=" + enabled + ", autoStart=" + autoStart);
+            AppLogger.i(TAG, "Configuration saved: host=" + host + ", port=" + port + ", maxRetries=" + maxRetries + ", enabled=" + enabled + ", autoStart=" + autoStart);
             updateStatus("✓ Configuration saved successfully!");
             Toast.makeText(this, "Configuration saved", Toast.LENGTH_SHORT).show();
         } catch (NumberFormatException e) {

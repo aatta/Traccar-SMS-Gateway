@@ -46,6 +46,16 @@
             android:hint="Traccar Server Port"
             android:text="5078"
             android:inputType="number"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Max Retry Count -->
+        <EditText
+            android:id="@+id/editMaxRetryCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Max Retries Before Fail (Default: 2)"
+            android:text="2"
+            android:inputType="number"
             android:layout_marginBottom="16dp" />
 
         <!-- Enable Gateway Switch -->

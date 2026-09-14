@@ -32,6 +32,7 @@ public class SmsListActivity extends AppCompatActivity {
     private Button buttonEndDate;
     private Button buttonApplyFilters;
     private Button buttonResetFilters;
+    private Button buttonExportDb;
     private Button buttonRetryFailed100;
     private Button buttonBack;
 
@@ -73,6 +74,7 @@ public class SmsListActivity extends AppCompatActivity {
         buttonEndDate = findViewById(R.id.buttonEndDate);
         buttonApplyFilters = findViewById(R.id.buttonApplyFilters);
         buttonResetFilters = findViewById(R.id.buttonResetFilters);
+        buttonExportDb = findViewById(R.id.buttonExportDb);
         buttonRetryFailed100 = findViewById(R.id.buttonRetryFailed100);
         buttonBack = findViewById(R.id.buttonBack);
 
@@ -101,6 +103,8 @@ public class SmsListActivity extends AppCompatActivity {
 
     private void setupListeners() {
         buttonBack.setOnClickListener(v -> finish());
+
+        buttonExportDb.setOnClickListener(v -> DatabaseExporter.exportAndShareDatabase(this));
 
         buttonRetryFailed100.setOnClickListener(v -> {
             Toast.makeText(this, "Retrying last 100 failed messages...", Toast.LENGTH_SHORT).show();

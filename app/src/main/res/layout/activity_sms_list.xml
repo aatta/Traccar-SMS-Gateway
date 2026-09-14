@@ -24,6 +24,15 @@
             android:textColor="#212121" />
 
         <Button
+            android:id="@+id/buttonExportDb"
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Export DB"
+            android:textSize="11sp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
             android:id="@+id/buttonRetryFailed100"
             style="?android:attr/buttonStyleSmall"
             android:layout_width="wrap_content"

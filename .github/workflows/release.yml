@@ -87,9 +87,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.NEW_VERSION }}
-          name: Release ${{ env.NEW_VERSION }}
-          files: release_assets/TraccarSMSGateway-${NEW_VERSION}.apk
+          tag_name: ${{ steps.versioning.outputs.tag_name }}
+          name: Release ${{ steps.versioning.outputs.tag_name }}
+          files: release_assets/TraccarSMSGateway-${{ steps.versioning.outputs.tag_name }}.apk
           draft: false
           prerelease: false
         env:
